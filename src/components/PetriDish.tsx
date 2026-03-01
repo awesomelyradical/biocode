@@ -247,8 +247,9 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
   const dragStartRef = useRef({ x: 0, y: 0, camX: 0, camY: 0 })
 
   // Touch state
+  const touchActiveRef = useRef(false)
   const touchStateRef = useRef<{
-    mode: 'none' | 'pan' | 'pinch'
+    mode: 'none' | 'cursor' | 'pan'
     startTime: number
     startX: number
     startY: number
@@ -372,6 +373,34 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
           ctx.fillStyle = 'oklch(0.9 0.0 0 / 0.9)'
           ctx.textAlign = 'center'
           ctx.fillText(sp.name, screenPos.x, screenPos.y - hb.radius * camera.zoom - 10)
+          ctx.restore()
+        }
+      }
+
+      // Draw local touch cursor dot
+      if (touchActiveRef.current) {
+        const mw = mouseWorldRef.current
+        if (mw.x !== 0 || mw.y !== 0) {
+          ctx.save()
+          // Pulsing glow
+          const pulse = 0.6 + Math.sin(performance.now() / 200) * 0.2
+          const grad = ctx.createRadialGradient(mw.x, mw.y, 0, mw.x, mw.y, 18)
+          grad.addColorStop(0, `oklch(0.85 0.20 145 / ${pulse})`)
+          grad.addColorStop(0.5, `oklch(0.75 0.18 145 / ${pulse * 0.3})`)
+          grad.addColorStop(1, 'transparent')
+          ctx.fillStyle = grad
+          ctx.beginPath()
+          ctx.arc(mw.x, mw.y, 18, 0, Math.PI * 2)
+          ctx.fill()
+
+          // Solid dot
+          ctx.beginPath()
+          ctx.arc(mw.x, mw.y, 4, 0, Math.PI * 2)
+          ctx.fillStyle = 'oklch(0.90 0.18 145)'
+          ctx.fill()
+          ctx.strokeStyle = 'oklch(0.95 0.10 145 / 0.8)'
+          ctx.lineWidth = 1.5
+          ctx.stroke()
           ctx.restore()
         }
       }
@@ -532,21 +561,30 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
     const ts = touchStateRef.current
 
     if (e.touches.length === 1) {
+      // Single finger = cursor mode (attraction / repulsion / catch)
       const t = e.touches[0]
-      ts.mode = 'pan'
+      ts.mode = 'cursor'
       ts.startTime = Date.now()
       ts.startX = t.clientX
       ts.startY = t.clientY
       ts.moved = false
-      dragStartRef.current = {
-        x: t.clientX,
-        y: t.clientY,
-        camX: state.camera.x,
-        camY: state.camera.y,
+      touchActiveRef.current = true
+
+      // Immediately place the cursor in world space
+      const canvas = canvasRef.current
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect()
+        const screenX = (t.clientX - rect.left) * devicePixelRatio
+        const screenY = (t.clientY - rect.top) * devicePixelRatio
+        mouseWorldRef.current = screenToWorld(screenX, screenY, state.camera)
       }
     } else if (e.touches.length === 2) {
-      ts.mode = 'pinch'
+      // Two fingers = pan + pinch-to-zoom
+      ts.mode = 'pan'
       ts.moved = true // prevent tap-select when lifting second finger
+      touchActiveRef.current = false
+      mouseWorldRef.current = { x: 0, y: 0 } // disable cursor physics while panning
+
       const [a, b] = [e.touches[0], e.touches[1]]
       ts.lastDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY)
       ts.lastMidX = (a.clientX + b.clientX) / 2
@@ -558,31 +596,19 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
         camY: state.camera.y,
       }
     }
-  }, [state.camera])
+  }, [state.camera, screenToWorld])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
     const ts = touchStateRef.current
 
-    if (ts.mode === 'pan' && e.touches.length === 1) {
+    if (ts.mode === 'cursor' && e.touches.length === 1) {
+      // Single finger drag — move the cursor dot
       const t = e.touches[0]
       const dx = t.clientX - ts.startX
       const dy = t.clientY - ts.startY
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) ts.moved = true
 
-      if (ts.moved) {
-        const camDx = (t.clientX - dragStartRef.current.x) / state.camera.zoom
-        const camDy = (t.clientY - dragStartRef.current.y) / state.camera.zoom
-        dispatch({
-          type: 'SET_CAMERA',
-          camera: {
-            x: dragStartRef.current.camX - camDx,
-            y: dragStartRef.current.camY - camDy,
-          },
-        })
-      }
-
-      // Update world-space touch position for physics
       const canvas = canvasRef.current
       if (canvas) {
         const rect = canvas.getBoundingClientRect()
@@ -590,7 +616,8 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
         const screenY = (t.clientY - rect.top) * devicePixelRatio
         mouseWorldRef.current = screenToWorld(screenX, screenY, state.camera)
       }
-    } else if (ts.mode === 'pinch' && e.touches.length === 2) {
+    } else if (ts.mode === 'pan' && e.touches.length === 2) {
+      // Two-finger drag — pan + pinch zoom
       const [a, b] = [e.touches[0], e.touches[1]]
       const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY)
       const midX = (a.clientX + b.clientX) / 2
@@ -629,8 +656,8 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
     e.preventDefault()
     const ts = touchStateRef.current
 
-    // Tap to select (short touch, didn't move)
-    if (ts.mode === 'pan' && !ts.moved && Date.now() - ts.startTime < 300) {
+    // Tap to select (short touch, didn't move much)
+    if (ts.mode === 'cursor' && !ts.moved && Date.now() - ts.startTime < 300) {
       const canvas = canvasRef.current
       if (canvas) {
         const rect = canvas.getBoundingClientRect()
@@ -642,7 +669,6 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
         for (const b of state.bacteria) {
           const dx = world.x - b.x
           const dy = world.y - b.y
-          // Slightly larger hit area on mobile
           if (Math.sqrt(dx * dx + dy * dy) < b.radius * 1.5) {
             dispatch({ type: 'SELECT', id: b.id })
             found = true
@@ -653,19 +679,23 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
       }
     }
 
-    // Reset if all fingers lifted
     if (e.touches.length === 0) {
+      // All fingers lifted — clear cursor
       ts.mode = 'none'
-    } else if (e.touches.length === 1 && ts.mode === 'pinch') {
-      // Went from pinch to single finger — restart pan from current position
-      ts.mode = 'pan'
+      touchActiveRef.current = false
+      mouseWorldRef.current = { x: 0, y: 0 }
+    } else if (e.touches.length === 1 && ts.mode === 'pan') {
+      // Went from two fingers to one — switch to cursor mode
+      ts.mode = 'cursor'
       ts.moved = true // don't trigger tap
+      touchActiveRef.current = true
       const t = e.touches[0]
-      dragStartRef.current = {
-        x: t.clientX,
-        y: t.clientY,
-        camX: state.camera.x,
-        camY: state.camera.y,
+      const canvas = canvasRef.current
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect()
+        const screenX = (t.clientX - rect.left) * devicePixelRatio
+        const screenY = (t.clientY - rect.top) * devicePixelRatio
+        mouseWorldRef.current = screenToWorld(screenX, screenY, state.camera)
       }
     }
   }, [state.camera, state.bacteria, screenToWorld, dispatch])

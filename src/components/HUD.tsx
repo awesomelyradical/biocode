@@ -55,7 +55,7 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
           Scroll to zoom · Shift+drag to pan
         </div>
         <div className="text-[10px] text-muted-foreground/60 mt-0.5 md:hidden">
-          Pinch to zoom · Drag to pan
+          Drag to interact · Two-finger pan &amp; pinch zoom
         </div>
       </div>
 
