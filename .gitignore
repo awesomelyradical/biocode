@@ -1,0 +1,8 @@
+aric-capel-portfolio-main/
+dist/
+node_modules/
+*.log
+*.tsbuildinfo
+.DS_Store
+.vscode/
+.idea/
