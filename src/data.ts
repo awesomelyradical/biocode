@@ -1,3 +1,13 @@
+/**
+ * @module data
+ *
+ * Static game data and factory functions.
+ *
+ * Contains the trait & behavior configuration tables, the five species
+ * definitions, helper functions for creating bacteria and initial populations,
+ * world-size constants, and the full catalogue of store items.
+ */
+
 import type { Species, BacteriaState, BacteriaProperties, TraitKey, Plasmid, BehaviorStats, BehaviorKey, StoreItem } from './types'
 
 // ── Trait System ──
@@ -25,6 +35,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorKey, { label: string; color: strin
   permeability:   { label: 'Permeability',   color: '#aa77cc', description: 'Gene uptake chance on eating',            min: 0,  max: 1, step: 0.1 },
 }
 
+/** Create a new behavior stats object with neutral defaults. */
 export function createDefaultBehavior(): BehaviorStats {
   return {
     kinAffinity: 0.2,
@@ -35,6 +46,7 @@ export function createDefaultBehavior(): BehaviorStats {
   }
 }
 
+/** Create a plasmid with points distributed evenly across all traits. */
 export function createPlasmid(capacity: number = INITIAL_PLASMID_CAPACITY): Plasmid {
   const perTrait = capacity / TRAIT_KEYS.length
   const traits = {} as Record<TraitKey, number>
@@ -42,6 +54,10 @@ export function createPlasmid(capacity: number = INITIAL_PLASMID_CAPACITY): Plas
   return { capacity, traits }
 }
 
+/**
+ * Convert a plasmid's trait points into the runtime property multipliers
+ * used by the physics simulation. Each multiplier is `points / BASE_TRAIT_POINTS`.
+ */
 export function plasmidToProperties(plasmid: Plasmid, color: string): BacteriaProperties {
   return {
     speed: plasmid.traits.speed / BASE_TRAIT_POINTS,
@@ -138,6 +154,11 @@ export const species: Species[] = [
 
 let nextId = 1
 
+/**
+ * Create a single bacterium of the given species at (x, y).
+ * Assigns a unique ID, random heading, a default even-distribution plasmid,
+ * and starting energy in the range [50, 80].
+ */
 export function createBacteria(
   speciesId: string,
   x: number,
@@ -171,6 +192,10 @@ export function createBacteria(
   }
 }
 
+/**
+ * Populate the world with `count` random bacteria spread across all species.
+ * Used at game start and on restart.
+ */
 export function spawnInitialPopulation(
   worldWidth: number,
   worldHeight: number,

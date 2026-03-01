@@ -1,3 +1,25 @@
+/**
+ * @module server
+ *
+ * Production Node.js server for Biocode.
+ *
+ * Serves two roles on a single port (set via `PORT` env var, default 5001):
+ *
+ * 1. **HTTP static file server** — serves the Vite-built `dist/` assets with
+ *    proper MIME types and SPA fallback to `index.html`. Includes path-traversal
+ *    protection.
+ *
+ * 2. **WebSocket multiplayer server** — manages game rooms where:
+ *    - Each room holds its own `GameState` and runs an independent 30-tps
+ *      simulation tick loop via `setInterval`.
+ *    - State is broadcast to all room members at ~10 Hz (every 3rd tick).
+ *    - Player cursor positions are relayed so each client can render remote cursors.
+ *    - Clients can adjust traits, change behaviors, trigger reproduction, or
+ *      restart the simulation; those actions are applied to the room's authoritative
+ *      state via the shared `gameReducer`.
+ *    - Empty rooms are cleaned up automatically when the last player disconnects.
+ */
+
 import { createServer } from 'node:http'
 import { readFileSync, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
@@ -26,6 +48,7 @@ interface Room {
 const rooms = new Map<string, Room>()
 let nextPlayerId = 1
 
+/** Generate a 4-char room code from an unambiguous alphanumeric set. Recurse on collision. */
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous chars
   let code = ''
@@ -33,6 +56,7 @@ function generateRoomCode(): string {
   return rooms.has(code) ? generateRoomCode() : code
 }
 
+/** Build the initial GameState for a new room. */
 function createRoomState(): GameState {
   return {
     bacteria: spawnInitialPopulation(WORLD_WIDTH, WORLD_HEIGHT, 25),
@@ -52,6 +76,7 @@ function createRoomState(): GameState {
   }
 }
 
+/** Extract the subset of game state that gets broadcast to all clients. */
 function extractSharedState(state: GameState): SharedGameState {
   return {
     bacteria: state.bacteria,
@@ -63,12 +88,14 @@ function extractSharedState(state: GameState): SharedGameState {
   }
 }
 
+/** Send a message to a single WebSocket client. */
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg))
   }
 }
 
+/** Send a message to every player in a room. */
 function broadcast(room: Room, msg: ServerMessage) {
   const data = JSON.stringify(msg)
   for (const player of room.players.values()) {
@@ -78,6 +105,7 @@ function broadcast(room: Room, msg: ServerMessage) {
   }
 }
 
+/** Start the 30-tps simulation tick loop for a room. Broadcasts state at ~10 Hz. */
 function startRoomTick(room: Room) {
   if (room.tickInterval) return
   room.broadcastCounter = 0
@@ -104,6 +132,7 @@ function startRoomTick(room: Room) {
   }, 1000 / 30)
 }
 
+/** Stop the tick loop for a room. */
 function stopRoomTick(room: Room) {
   if (room.tickInterval) {
     clearInterval(room.tickInterval)
@@ -111,6 +140,7 @@ function stopRoomTick(room: Room) {
   }
 }
 
+/** Remove a player from their room and clean up empty rooms. */
 function removePlayerFromRoom(playerId: string, room: Room) {
   room.players.delete(playerId)
   broadcast(room, { type: 'PLAYER_LEFT', playerId, playerCount: room.players.size })

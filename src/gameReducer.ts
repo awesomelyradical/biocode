@@ -1,8 +1,33 @@
+/**
+ * @module gameReducer
+ *
+ * Pure reducer that drives the entire Biocode simulation.
+ *
+ * On every `TICK` the reducer:
+ *  1. Applies wandering impulses, movement-pattern forces, and species-affinity forces.
+ *  2. Runs cursor reactivity (repulsion halo + catch-and-hold when directly over a cell).
+ *  3. Clamps speed, applies friction, and bounces off world boundaries.
+ *  4. Manages energy economy: passive gain, size/speed cost, lifeFecundity modifier.
+ *  5. Triggers automatic binary fission when energy exceeds the reproduction threshold.
+ *  6. Resolves circle-circle collisions with elastic impulses and mass-ratio predation.
+ *  7. Handles gene transfer via permeability when one cell eats another.
+ *  8. Spawns nutrient particles from dead cells and ambient background nutrients.
+ *  9. Lets living cells absorb nearby nutrients.
+ *  10. Accrues biomass currency based on living population.
+ *
+ * Other action types handle trait adjustment, behavior changes, camera control,
+ * manual reproduction, store purchases, and game restart.
+ */
+
 import type { GameState, GameAction, BacteriaState, TraitKey, BehaviorKey, Nutrient, StoreCategory } from './types'
 import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, STORE_ITEMS } from './data'
 
 let nutrientId = 0
 
+/**
+ * Scatter nutrient particles at a death site.
+ * Spawns 3–6 particles that drift outward with random velocities.
+ */
 function spawnNutrients(x: number, y: number, energy: number, color: string): Nutrient[] {
   const count = 3 + Math.floor(Math.random() * 4) // 3–6 particles
   const perParticle = energy / count
@@ -26,6 +51,10 @@ function spawnNutrients(x: number, y: number, energy: number, color: string): Nu
   return nutrients
 }
 
+/**
+ * Main game state reducer. Every state transition flows through here.
+ * @see GameAction for the full list of supported action types.
+ */
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'TICK': {

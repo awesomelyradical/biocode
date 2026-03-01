@@ -1,6 +1,20 @@
+/**
+ * @module protocol
+ *
+ * Shared message types for client ↔ server WebSocket communication.
+ *
+ * Imported by both the browser client (`useMultiplayer` hook) and the
+ * Node.js server (`server.ts`). Keeping them in one file guarantees
+ * the two sides stay in sync.
+ *
+ * - `SharedGameState` — the subset of `GameState` broadcast to all clients.
+ * - `ClientMessage`   — messages the client sends to the server.
+ * - `ServerMessage`   — messages the server sends to (each) client.
+ */
+
 import type { BacteriaState, Nutrient, Species, TraitKey, BehaviorKey } from '../types'
 
-// ── Shared simulation state (broadcast from server) ──
+/** The authoritative game state broadcast from the server at ~10 Hz. */
 
 export interface SharedGameState {
   bacteria: BacteriaState[]

@@ -1,3 +1,19 @@
+/**
+ * @module BacteriaModPanel
+ *
+ * Full-screen overlay panel for modifying a selected bacterium's genome.
+ *
+ * Features:
+ * - Canvas-based radial ring chart showing the distribution of plasmid trait points
+ *   as colour-coded pie segments.
+ * - Click a segment to select it; use the scroll wheel (or buttons) to redistribute
+ *   trait points from other traits into the selected one.
+ * - Behavior sliders for kinAffinity, xenoAffinity, lifeFecundity, aggression,
+ *   and permeability.
+ * - Displays energy, age, plasmid capacity, and a "Split" button for manual fission.
+ * - Responsive (inset-4 on mobile, inset-10 on desktop) with entry/exit animations.
+ */
+
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { Button } from './ui/button'
 import type { BacteriaState, GameAction, TraitKey, BehaviorKey } from '../types'

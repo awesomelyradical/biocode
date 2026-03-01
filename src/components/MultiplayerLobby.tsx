@@ -1,3 +1,11 @@
+/**
+ * @module MultiplayerLobby
+ *
+ * Pre-game lobby screen for multiplayer.
+ * Lets the player create a new room or join an existing one with a 4-character
+ * room code. Also reads `?room=` from the URL to auto-fill the join code.
+ */
+
 import { useState, useEffect } from 'react'
 
 interface MultiplayerLobbyProps {

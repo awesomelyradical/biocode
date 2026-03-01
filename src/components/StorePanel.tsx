@@ -1,3 +1,14 @@
+/**
+ * @module StorePanel
+ *
+ * Full-screen overlay for the cosmetic store where players spend biomass.
+ *
+ * Four category tabs: Colors, Patterns, Backgrounds, Music.
+ * Each item card shows its cost, description, and a preview swatch (for colours
+ * and backgrounds). Three purchase states: locked (buy), owned (equip), equipped
+ * (unequip). The panel is responsive with animated mount/unmount transitions.
+ */
+
 import { useState, useEffect } from 'react'
 import type { GameAction, GameState, StoreCategory } from '../types'
 import { STORE_ITEMS } from '../data'

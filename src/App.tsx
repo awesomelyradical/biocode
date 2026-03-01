@@ -1,3 +1,20 @@
+/**
+ * @module App
+ *
+ * Root application component and screen router.
+ *
+ * Screens:
+ *  - `splash`        — Animated title screen with floating procedural cells.
+ *                      "Begin Observation" → single-player, "Multiplayer" → lobby.
+ *  - `singleplayer`  — Full simulation: PetriDish + HUD + StorePanel + BacteriaModPanel.
+ *                      Runs a 30 tps game loop via `requestAnimationFrame`.
+ *  - `mp-lobby`      — Room create / join UI.
+ *  - `mp-game`       — Delegated to `MultiplayerGame` component.
+ *
+ * Also manages music playback — when a music store item is equipped, the
+ * procedural audio engine (`audio.ts`) is started.
+ */
+
 import { useReducer, useEffect, useRef, useCallback, useState } from 'react'
 import { PetriDish } from './components/PetriDish'
 import { BacteriaModPanel } from './components/BacteriaModPanel'

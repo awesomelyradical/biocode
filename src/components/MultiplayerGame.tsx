@@ -1,3 +1,14 @@
+/**
+ * @module MultiplayerGame
+ *
+ * Wraps the PetriDish renderer for multiplayer sessions.
+ *
+ * Connects to the WebSocket server via `useMultiplayer`, builds a local
+ * `GameState` from the authoritative `SharedGameState` + local camera/selection,
+ * and intercepts dispatched actions to forward them over the socket instead
+ * of reducing them locally. Renders remote player cursors and multiplayer HUD.
+ */
+
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { PetriDish } from './PetriDish'
 import { BacteriaModPanel } from './BacteriaModPanel'

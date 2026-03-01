@@ -1,3 +1,16 @@
+/**
+ * @module HUD
+ *
+ * Heads-up display overlaid on the game canvas.
+ *
+ * Panels (positioned around the viewport edges):
+ * - **Top-left**: live population counts per species
+ * - **Top-right**: current zoom level + control hints (touch-aware)
+ * - **Bottom-left**: selected bacterium stats (traits, energy, age)
+ * - **Bottom-right**: biomass counter, store button, restart, and
+ *   multiplayer info (room code + copy-invite, player count, leave)
+ */
+
 import type { GameState, GameAction } from '../types'
 import { species } from '../data'
 

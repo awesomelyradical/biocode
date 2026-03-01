@@ -1,5 +1,16 @@
+/**
+ * @module types
+ *
+ * Core type definitions for the Biocode bacteria simulation.
+ *
+ * Defines every domain object — species templates, individual bacteria state,
+ * the plasmid / trait genetic system, camera, nutrients, the cosmetic store,
+ * and the full set of game actions dispatched through the reducer.
+ */
+
 // ── Game Types ──
 
+/** Template describing a bacterial species (immutable after init). */
 export interface Species {
   id: string
   name: string
@@ -16,13 +27,22 @@ export interface Species {
   description: string
 }
 
+/** The six adjustable genetic traits carried on a bacterium's plasmid. */
 export type TraitKey = 'speed' | 'size' | 'friction' | 'restitution' | 'senseRadius' | 'reproductionRate'
 
+/**
+ * A plasmid is a fixed-capacity pool of trait points.
+ * Points can be redistributed between traits but their sum always equals `capacity`.
+ */
 export interface Plasmid {
   capacity: number                    // total distributable points
   traits: Record<TraitKey, number>    // points per trait, sum ≤ capacity
 }
 
+/**
+ * Behavioral sliders that control how a bacterium interacts with the world.
+ * Each value is a continuous float in the range shown in its comment.
+ */
 export interface BehaviorStats {
   kinAffinity: number       // -1 repel … +1 attract own species
   xenoAffinity: number      // -1 repel … +1 attract other species
@@ -33,6 +53,7 @@ export interface BehaviorStats {
 
 export type BehaviorKey = keyof BehaviorStats
 
+/** Computed properties derived from a plasmid's trait point distribution. */
 export interface BacteriaProperties {
   speed: number
   size: number
@@ -43,6 +64,7 @@ export interface BacteriaProperties {
   color: string
 }
 
+/** Full mutable state of a single bacterium in the simulation. */
 export interface BacteriaState {
   id: string
   speciesId: string
@@ -62,12 +84,14 @@ export interface BacteriaState {
   movementPattern?: string // store pattern id (e.g. 'pattern-spiral')
 }
 
+/** Viewport camera (world-space center + zoom level). */
 export interface CameraState {
   x: number   // world-space center X
   y: number   // world-space center Y
   zoom: number // scale factor (1 = default, >1 = zoomed in)
 }
 
+/** A floating nutrient particle released when a bacterium dies. */
 export interface Nutrient {
   id: string
   x: number
@@ -81,8 +105,10 @@ export interface Nutrient {
   maxAge: number
 }
 
+/** The four cosmetic store categories. */
 export type StoreCategory = 'colors' | 'patterns' | 'backgrounds' | 'music'
 
+/** A purchasable cosmetic item in the store. */
 export interface StoreItem {
   id: string
   category: StoreCategory
@@ -93,11 +119,25 @@ export interface StoreItem {
   preview?: string      // color/value for preview
 }
 
+/** Player's store progress — what's been bought and what's currently active. */
 export interface StoreState {
   unlocked: Set<string> // item IDs the player has purchased
   equipped: Record<StoreCategory, string | null> // currently active item per category
 }
 
+/**
+ * Union of all actions that can be dispatched to the game reducer.
+ *
+ * - `TICK` — advance the simulation one step (physics, collisions, energy, reproduction)
+ * - `SPAWN` / `REMOVE` — add or remove a single bacterium
+ * - `SELECT` — set the player-selected bacterium (or null to deselect)
+ * - `ADJUST_TRAIT` — redistribute plasmid trait points
+ * - `SET_BEHAVIOR` — change a behavioral slider
+ * - `SET_CAMERA` — pan / zoom the viewport
+ * - `REPRODUCE` — manually trigger binary fission on a bacterium
+ * - `RESTART` — reset the simulation
+ * - `BUY_ITEM` / `EQUIP_ITEM` / `UNEQUIP_ITEM` — cosmetic store operations
+ */
 export type GameAction =
   | { type: 'TICK'; mouseX: number; mouseY: number }
   | { type: 'SPAWN'; bacteria: BacteriaState }
@@ -112,6 +152,7 @@ export type GameAction =
   | { type: 'EQUIP_ITEM'; itemId: string; category: StoreCategory }
   | { type: 'UNEQUIP_ITEM'; category: StoreCategory }
 
+/** The complete, serialisable game state passed through the reducer. */
 export interface GameState {
   bacteria: BacteriaState[]
   nutrients: Nutrient[]

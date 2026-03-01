@@ -1,3 +1,20 @@
+/**
+ * @module PetriDish
+ *
+ * The main Canvas 2D renderer for the petri-dish simulation.
+ *
+ * Responsibilities:
+ * - Renders bacteria with species-specific shapes (circle / rod / ellipse),
+ *   animated flagella, energy rings, membrane glow, and movement-pattern effects.
+ * - Draws floating nutrient particles with fade-out lifecycle.
+ * - Handles all input: mouse (scroll-zoom, shift-drag pan, hover, click-select)
+ *   and touch (one-finger cursor for attraction/repulsion, two-finger pan + pinch-zoom,
+ *   tap-to-select).
+ * - Draws a visible cursor dot on touch so mobile users can see their interaction point.
+ * - Renders remote player cursors in multiplayer mode.
+ * - Runs a `requestAnimationFrame` render loop scaled for devicePixelRatio.
+ */
+
 import { useRef, useEffect, useCallback } from 'react'
 import type { GameState, GameAction, CameraState, BacteriaState } from '../types'
 import { species, STORE_ITEMS } from '../data'

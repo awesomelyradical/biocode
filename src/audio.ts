@@ -1,3 +1,24 @@
+/**
+ * @module audio
+ *
+ * Procedural audio engine built on the Web Audio API.
+ *
+ * Each "music" store item maps to a synthesiser function that creates a unique
+ * generative soundscape using oscillators, filters, LFOs, and noise buffers.
+ * No audio files are used — everything is synthesised at runtime.
+ *
+ * Supported ambience modes:
+ *  - `music-ambient-hum`  — deep resonant drone with slow LFO modulation
+ *  - `music-heartbeat`    — lub-dub rhythm at 72 BPM via scheduled gain envelopes
+ *  - `music-static`       — band-pass-filtered white noise with frequency sweep
+ *  - `music-synth-wave`   — detuned sawtooth pad chord with filter LFO
+ *  - `music-nature`       — brown-noise rain + band-pass wind with slow modulation
+ *
+ * Public API:
+ *  - `playMusic(itemId)` — start (or switch to) the given ambience
+ *  - `stopMusic()`       — silence all audio and release nodes
+ */
+
 // Procedural audio engine using Web Audio API
 // Each music item generates a unique synthesized ambience
 
@@ -6,6 +27,7 @@ let masterGain: GainNode | null = null
 let activeNodes: AudioNode[] = []
 let activeId: string | null = null
 
+/** Lazily create (or resume) the shared AudioContext + master gain node. */
 function getContext() {
   if (!ctx) {
     ctx = new AudioContext()
@@ -17,6 +39,7 @@ function getContext() {
   return { ctx, masterGain: masterGain! }
 }
 
+/** Stop and disconnect all currently active audio nodes. */
 function cleanup() {
   for (const node of activeNodes) {
     try {
@@ -29,6 +52,7 @@ function cleanup() {
   activeNodes = []
 }
 
+/** Create a looping white-noise buffer source (used by Static and Nature). */
 function createWhiteNoise(ac: AudioContext): AudioBufferSourceNode {
   const bufferSize = ac.sampleRate * 2
   const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate)
@@ -248,6 +272,10 @@ function startNature(ac: AudioContext, dest: AudioNode) {
 
 // ── Public API ──
 
+/**
+ * Start or switch to the given music/ambience mode.
+ * Pass `null` to stop playback. If the requested item is already playing, no-op.
+ */
 export function playMusic(itemId: string | null) {
   if (itemId === activeId) return
   cleanup()
@@ -275,6 +303,7 @@ export function playMusic(itemId: string | null) {
   }
 }
 
+/** Stop all audio playback and release resources. */
 export function stopMusic() {
   cleanup()
   activeId = null

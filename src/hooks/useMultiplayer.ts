@@ -1,3 +1,19 @@
+/**
+ * @module useMultiplayer
+ *
+ * React hook that manages the WebSocket connection for multiplayer.
+ *
+ * Provides:
+ * - Connection lifecycle: `createRoom`, `joinRoom`, `disconnect`
+ * - Shared state: `sharedState` (authoritative GameState from server)
+ * - Remote cursors: `cursors` (other players' world-space positions)
+ * - Action senders: `sendAdjustTrait`, `sendSetBehavior`, `sendReproduce`, `sendRestart`, `sendCursorMove`
+ * - Status / errors: `status`, `error`
+ *
+ * The hook auto-detects dev vs production environments to pick the right
+ * WebSocket URL (dev: separate port 5001, prod: same host/port).
+ */
+
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { ClientMessage, ServerMessage, SharedGameState } from '../shared/protocol'
 import type { TraitKey, BehaviorKey } from '../types'
