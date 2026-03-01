@@ -5,9 +5,14 @@ interface HUDProps {
   state: GameState
   dispatch: React.Dispatch<GameAction>
   onOpenStore: () => void
+  multiplayerInfo?: {
+    roomCode: string | null
+    playerCount: number
+    onLeave: () => void
+  }
 }
 
-export function HUD({ state, dispatch, onOpenStore }: HUDProps) {
+export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps) {
   // Population counts per species
   const counts = new Map<string, number>()
   for (const b of state.bacteria) {
@@ -77,22 +82,55 @@ export function HUD({ state, dispatch, onOpenStore }: HUDProps) {
 
       {/* Restart + Store + Game title — bottom right */}
       <div className="absolute bottom-3 right-3 z-30 flex items-center gap-3">
-        <div className="flex items-center gap-1.5 bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 pointer-events-none">
-          <span className="text-sm">🧫</span>
-          <span className="text-xs font-bold text-primary font-mono">{Math.floor(state.biomass)}</span>
-        </div>
-        <button
-          onClick={onOpenStore}
-          className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer flex items-center gap-1.5"
-        >
-          <span>🧬</span> Store
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'RESTART' })}
-          className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer"
-        >
-          Restart
-        </button>
+        {multiplayerInfo ? (
+          <>
+            {multiplayerInfo.roomCode && (
+              <div className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 flex items-center gap-2 pointer-events-auto">
+                <span className="text-xs text-muted-foreground">Room:</span>
+                <span className="text-sm font-mono font-bold text-primary tracking-widest">{multiplayerInfo.roomCode}</span>
+                <button
+                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}?room=${multiplayerInfo.roomCode}`)}
+                  className="text-xs text-primary/50 hover:text-primary transition-colors cursor-pointer ml-1"
+                  title="Copy invite link"
+                >📋</button>
+              </div>
+            )}
+            <div className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 pointer-events-none">
+              <span className="text-xs text-muted-foreground">👥 {multiplayerInfo.playerCount}</span>
+            </div>
+            <button
+              onClick={() => dispatch({ type: 'RESTART' })}
+              className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+            >
+              Restart
+            </button>
+            <button
+              onClick={multiplayerInfo.onLeave}
+              className="bg-card/70 backdrop-blur-md border border-red-500/20 rounded-lg px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
+            >
+              Leave
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5 bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 pointer-events-none">
+              <span className="text-sm">🧫</span>
+              <span className="text-xs font-bold text-primary font-mono">{Math.floor(state.biomass)}</span>
+            </div>
+            <button
+              onClick={onOpenStore}
+              className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <span>🧬</span> Store
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'RESTART' })}
+              className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+            >
+              Restart
+            </button>
+          </>
+        )}
         <span className="text-xs font-bold text-primary/30 tracking-widest pointer-events-none">BIOCODE</span>
       </div>
     </>

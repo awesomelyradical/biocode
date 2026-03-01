@@ -5,6 +5,7 @@ import { species, STORE_ITEMS } from '../data'
 interface PetriDishProps {
   state: GameState
   dispatch: React.Dispatch<GameAction>
+  remoteCursors?: Record<string, { x: number; y: number }>
 }
 
 // ── Rendering helpers ──
@@ -236,7 +237,7 @@ function drawWorld(
 
 // ── Component ──
 
-export function PetriDish({ state, dispatch, mouseWorldRef }: PetriDishProps & { mouseWorldRef: React.MutableRefObject<{ x: number; y: number }> }) {
+export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: PetriDishProps & { mouseWorldRef: React.MutableRefObject<{ x: number; y: number }> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const animFrameRef = useRef<number>(0)
@@ -363,6 +364,42 @@ export function PetriDish({ state, dispatch, mouseWorldRef }: PetriDishProps & {
         }
       }
 
+      // Draw remote player cursors
+      if (remoteCursors) {
+        const cursorColors = [
+          'oklch(0.80 0.22 350)', 'oklch(0.75 0.20 200)',
+          'oklch(0.80 0.20 85)', 'oklch(0.70 0.22 280)',
+          'oklch(0.78 0.18 145)', 'oklch(0.75 0.20 30)',
+        ]
+        let ci = 0
+        for (const [, pos] of Object.entries(remoteCursors)) {
+          if (pos.x === 0 && pos.y === 0) continue
+          const color = cursorColors[ci % cursorColors.length]
+          ci++
+
+          // Draw a small circle + cross at cursor position (world coords, already transformed)
+          ctx.save()
+          ctx.beginPath()
+          ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2)
+          ctx.fillStyle = color.replace(')', ' / 0.4)')
+          ctx.fill()
+          ctx.strokeStyle = color
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+
+          // Crosshair lines
+          ctx.beginPath()
+          ctx.moveTo(pos.x - 10, pos.y)
+          ctx.lineTo(pos.x + 10, pos.y)
+          ctx.moveTo(pos.x, pos.y - 10)
+          ctx.lineTo(pos.x, pos.y + 10)
+          ctx.strokeStyle = color.replace(')', ' / 0.6)')
+          ctx.lineWidth = 1
+          ctx.stroke()
+          ctx.restore()
+        }
+      }
+
       animFrameRef.current = requestAnimationFrame(render)
     }
 
@@ -373,7 +410,7 @@ export function PetriDish({ state, dispatch, mouseWorldRef }: PetriDishProps & {
       cancelAnimationFrame(animFrameRef.current)
       window.removeEventListener('resize', resize)
     }
-  }, [state, screenToWorld])
+  }, [state, screenToWorld, remoteCursors])
 
   // ── Event Handlers ──
 

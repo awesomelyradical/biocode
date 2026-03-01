@@ -48,9 +48,12 @@ export function useMultiplayer(): UseMultiplayerReturn {
     setError(null)
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.hostname
-    const port = 5001
-    const ws = new WebSocket(`${protocol}//${host}:${port}`)
+    // In production, WS runs on same host/port; in dev, use separate port 5001
+    const isDev = window.location.port === '5173' || window.location.port === '5174'
+    const wsUrl = isDev
+      ? `${protocol}//${window.location.hostname}:5001`
+      : `${protocol}//${window.location.host}`
+    const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
     ws.onopen = () => {

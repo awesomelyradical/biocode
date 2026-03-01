@@ -1,3 +1,6 @@
+import { createServer } from 'node:http'
+import { readFileSync, existsSync } from 'node:fs'
+import { join, extname } from 'node:path'
 import { WebSocketServer, WebSocket } from 'ws'
 import { gameReducer } from './src/gameReducer.ts'
 import { species, spawnInitialPopulation, WORLD_WIDTH, WORLD_HEIGHT } from './src/data.ts'
@@ -119,12 +122,54 @@ function removePlayerFromRoom(playerId: string, room: Room) {
   }
 }
 
-// ── WebSocket server ──
+// ── HTTP server (serves static files from dist/) ──
 
 const PORT = Number(process.env.PORT) || 5001
-const wss = new WebSocketServer({ port: PORT })
+const DIST = join(import.meta.dirname, 'dist')
 
-console.log(`Biocode multiplayer server running on ws://localhost:${PORT}`)
+const MIME: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+}
+
+const httpServer = createServer((req, res) => {
+  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`)
+  let filePath = join(DIST, url.pathname === '/' ? 'index.html' : url.pathname)
+
+  // Prevent path traversal
+  if (!filePath.startsWith(DIST)) {
+    res.writeHead(403)
+    res.end()
+    return
+  }
+
+  if (!existsSync(filePath)) {
+    // SPA fallback
+    filePath = join(DIST, 'index.html')
+  }
+
+  try {
+    const data = readFileSync(filePath)
+    const ext = extname(filePath)
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' })
+    res.end(data)
+  } catch {
+    res.writeHead(404)
+    res.end('Not found')
+  }
+})
+
+const wss = new WebSocketServer({ server: httpServer })
+httpServer.listen(PORT, () => {
+  console.log(`Biocode server running on http://localhost:${PORT}`)
+})
 
 wss.on('connection', (ws) => {
   const playerId = `p${nextPlayerId++}`

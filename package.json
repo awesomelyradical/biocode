@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "tsx server.ts",
     "build": "tsc -b --noCheck && vite build",
+    "start": "tsx server.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -18,6 +20,7 @@
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.2",
     "tw-animate-css": "^1.2.4",
+    "tsx": "^4.21.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {
@@ -31,7 +34,6 @@
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
     "tailwindcss": "^4.1.11",
-    "tsx": "^4.21.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.38.0",
     "vite": "^7.2.6"

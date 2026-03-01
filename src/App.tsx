@@ -3,10 +3,14 @@ import { PetriDish } from './components/PetriDish'
 import { BacteriaModPanel } from './components/BacteriaModPanel'
 import { StorePanel } from './components/StorePanel'
 import { HUD } from './components/HUD'
+import { MultiplayerGame } from './components/MultiplayerGame'
+import { MultiplayerLobby } from './components/MultiplayerLobby'
 import { gameReducer } from './gameReducer'
 import { species, spawnInitialPopulation, WORLD_WIDTH, WORLD_HEIGHT } from './data'
 import { playMusic } from './audio'
 import type { GameState } from './types'
+
+type AppScreen = 'splash' | 'singleplayer' | 'mp-lobby' | 'mp-game'
 
 const initialState: GameState = {
   bacteria: spawnInitialPopulation(WORLD_WIDTH, WORLD_HEIGHT, 25),
@@ -25,7 +29,7 @@ const initialState: GameState = {
   },
 }
 
-function SplashScreen({ onPlay }: { onPlay: () => void }) {
+function SplashScreen({ onPlay, onMultiplayer }: { onPlay: () => void; onMultiplayer: () => void }) {
   const [show, setShow] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -136,27 +140,51 @@ function SplashScreen({ onPlay }: { onPlay: () => void }) {
           </p>
         </div>
 
-        <button
-          onClick={handlePlay}
-          className="group relative mt-4 px-12 py-4 rounded-full border-2 text-lg font-semibold tracking-wider uppercase transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95"
-          style={{
-            borderColor: 'oklch(0.75 0.18 145 / 0.5)',
-            color: 'oklch(0.85 0.15 145)',
-            background: 'oklch(0.75 0.18 145 / 0.08)',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'oklch(0.75 0.18 145 / 0.2)'
-            e.currentTarget.style.borderColor = 'oklch(0.75 0.18 145 / 0.8)'
-            e.currentTarget.style.boxShadow = '0 0 30px oklch(0.75 0.18 145 / 0.3)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'oklch(0.75 0.18 145 / 0.08)'
-            e.currentTarget.style.borderColor = 'oklch(0.75 0.18 145 / 0.5)'
-            e.currentTarget.style.boxShadow = 'none'
-          }}
-        >
-          Begin Observation
-        </button>
+        <div className="flex flex-col items-center gap-4 mt-4">
+          <button
+            onClick={handlePlay}
+            className="group relative px-12 py-4 rounded-full border-2 text-lg font-semibold tracking-wider uppercase transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95"
+            style={{
+              borderColor: 'oklch(0.75 0.18 145 / 0.5)',
+              color: 'oklch(0.85 0.15 145)',
+              background: 'oklch(0.75 0.18 145 / 0.08)',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'oklch(0.75 0.18 145 / 0.2)'
+              e.currentTarget.style.borderColor = 'oklch(0.75 0.18 145 / 0.8)'
+              e.currentTarget.style.boxShadow = '0 0 30px oklch(0.75 0.18 145 / 0.3)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'oklch(0.75 0.18 145 / 0.08)'
+              e.currentTarget.style.borderColor = 'oklch(0.75 0.18 145 / 0.5)'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            Begin Observation
+          </button>
+
+          <button
+            onClick={() => { setShow(false); setTimeout(onMultiplayer, 500) }}
+            className="group relative px-10 py-3 rounded-full border-2 text-base font-semibold tracking-wider uppercase transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95"
+            style={{
+              borderColor: 'oklch(0.65 0.16 240 / 0.5)',
+              color: 'oklch(0.80 0.14 240)',
+              background: 'oklch(0.65 0.16 240 / 0.08)',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'oklch(0.65 0.16 240 / 0.2)'
+              e.currentTarget.style.borderColor = 'oklch(0.65 0.16 240 / 0.8)'
+              e.currentTarget.style.boxShadow = '0 0 30px oklch(0.65 0.16 240 / 0.3)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'oklch(0.65 0.16 240 / 0.08)'
+              e.currentTarget.style.borderColor = 'oklch(0.65 0.16 240 / 0.5)'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            Multiplayer
+          </button>
+        </div>
 
         <div className="mt-8 flex flex-col items-center gap-1 text-white/25 text-xs">
           <p>Click bacteria to modify their genome</p>
@@ -172,11 +200,17 @@ function SplashScreen({ onPlay }: { onPlay: () => void }) {
 
 function App() {
   const [state, dispatch] = useReducer(gameReducer, initialState)
-  const [showSplash, setShowSplash] = useState(true)
+  const [screen, setScreen] = useState<AppScreen>(() => {
+    // Auto-join if ?room= in URL
+    const params = new URLSearchParams(window.location.search)
+    return params.get('room') ? 'mp-lobby' : 'splash'
+  })
+  const [mpRoomCode, setMpRoomCode] = useState<string | undefined>(undefined)
   const [showStore, setShowStore] = useState(false)
   const tickRef = useRef<number>(0)
   const modPanelOpen = useRef(false)
   const mouseWorldRef = useRef({ x: 0, y: 0 })
+  const showSplash = screen === 'splash'
 
   const selectedBacterium = state.selectedId
     ? state.bacteria.find(b => b.id === state.selectedId)
@@ -215,6 +249,33 @@ function App() {
     dispatch({ type: 'SELECT', id: null })
   }, [])
 
+  // Multiplayer flow handlers
+  const handleMultiplayer = useCallback(() => setScreen('mp-lobby'), [])
+  const handleCreateRoom = useCallback(() => {
+    setMpRoomCode(undefined)
+    setScreen('mp-game')
+  }, [])
+  const handleJoinRoom = useCallback((code: string) => {
+    setMpRoomCode(code)
+    setScreen('mp-game')
+  }, [])
+  const handleMpDisconnect = useCallback(() => {
+    setMpRoomCode(undefined)
+    // Clean room param from URL
+    const url = new URL(window.location.href)
+    url.searchParams.delete('room')
+    window.history.replaceState({}, '', url.toString())
+    setScreen('splash')
+  }, [])
+
+  if (screen === 'mp-lobby') {
+    return <MultiplayerLobby onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} onBack={() => setScreen('splash')} />
+  }
+
+  if (screen === 'mp-game') {
+    return <MultiplayerGame roomCode={mpRoomCode} onDisconnect={handleMpDisconnect} />
+  }
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-background">
       <PetriDish state={state} dispatch={dispatch} mouseWorldRef={mouseWorldRef} />
@@ -233,7 +294,7 @@ function App() {
           onClose={() => setShowStore(false)}
         />
       )}
-      {showSplash && <SplashScreen onPlay={() => setShowSplash(false)} />}
+      {screen === 'splash' && <SplashScreen onPlay={() => setScreen('singleplayer')} onMultiplayer={handleMultiplayer} />}
     </div>
   )
 }
