@@ -259,13 +259,14 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
     moved: boolean
   }>({ mode: 'none', startTime: 0, startX: 0, startY: 0, lastDist: 0, lastMidX: 0, lastMidY: 0, moved: false })
 
-  // Convert screen coords to world coords
+  // Convert screen coords (device pixels) to world coords
   const screenToWorld = useCallback((screenX: number, screenY: number, camera: CameraState) => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0 }
+    const dpr = devicePixelRatio
     return {
-      x: (screenX - canvas.width / 2) / camera.zoom + camera.x,
-      y: (screenY - canvas.height / 2) / camera.zoom + camera.y,
+      x: (screenX - canvas.width / 2) / (camera.zoom * dpr) + camera.x,
+      y: (screenY - canvas.height / 2) / (camera.zoom * dpr) + camera.y,
     }
   }, [])
 
