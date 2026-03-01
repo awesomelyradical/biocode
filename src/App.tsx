@@ -187,8 +187,10 @@ function SplashScreen({ onPlay, onMultiplayer }: { onPlay: () => void; onMultipl
         </div>
 
         <div className="mt-8 flex flex-col items-center gap-1 text-white/25 text-xs">
-          <p>Click bacteria to modify their genome</p>
-          <p>Scroll to zoom · Shift+drag to pan</p>
+          <p className="hidden md:block">Click bacteria to modify their genome</p>
+          <p className="md:hidden">Tap bacteria to modify their genome</p>
+          <p className="hidden md:block">Scroll to zoom · Shift+drag to pan</p>
+          <p className="md:hidden">Pinch to zoom · Drag to pan</p>
         </div>
         <p className="mt-12 text-white/85 text-[12px] tracking-wide">
           Vibecoded together by Aric and Juniper

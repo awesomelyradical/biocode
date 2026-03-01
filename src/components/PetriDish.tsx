@@ -246,6 +246,18 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef({ x: 0, y: 0, camX: 0, camY: 0 })
 
+  // Touch state
+  const touchStateRef = useRef<{
+    mode: 'none' | 'pan' | 'pinch'
+    startTime: number
+    startX: number
+    startY: number
+    lastDist: number
+    lastMidX: number
+    lastMidY: number
+    moved: boolean
+  }>({ mode: 'none', startTime: 0, startX: 0, startY: 0, lastDist: 0, lastMidX: 0, lastMidY: 0, moved: false })
+
   // Convert screen coords to world coords
   const screenToWorld = useCallback((screenX: number, screenY: number, camera: CameraState) => {
     const canvas = canvasRef.current
@@ -513,6 +525,151 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
     dispatch({ type: 'SELECT', id: null })
   }, [state.camera, state.bacteria, screenToWorld, dispatch])
 
+  // ── Touch Handlers ──
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    const ts = touchStateRef.current
+
+    if (e.touches.length === 1) {
+      const t = e.touches[0]
+      ts.mode = 'pan'
+      ts.startTime = Date.now()
+      ts.startX = t.clientX
+      ts.startY = t.clientY
+      ts.moved = false
+      dragStartRef.current = {
+        x: t.clientX,
+        y: t.clientY,
+        camX: state.camera.x,
+        camY: state.camera.y,
+      }
+    } else if (e.touches.length === 2) {
+      ts.mode = 'pinch'
+      ts.moved = true // prevent tap-select when lifting second finger
+      const [a, b] = [e.touches[0], e.touches[1]]
+      ts.lastDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY)
+      ts.lastMidX = (a.clientX + b.clientX) / 2
+      ts.lastMidY = (a.clientY + b.clientY) / 2
+      dragStartRef.current = {
+        x: ts.lastMidX,
+        y: ts.lastMidY,
+        camX: state.camera.x,
+        camY: state.camera.y,
+      }
+    }
+  }, [state.camera])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    const ts = touchStateRef.current
+
+    if (ts.mode === 'pan' && e.touches.length === 1) {
+      const t = e.touches[0]
+      const dx = t.clientX - ts.startX
+      const dy = t.clientY - ts.startY
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) ts.moved = true
+
+      if (ts.moved) {
+        const camDx = (t.clientX - dragStartRef.current.x) / state.camera.zoom
+        const camDy = (t.clientY - dragStartRef.current.y) / state.camera.zoom
+        dispatch({
+          type: 'SET_CAMERA',
+          camera: {
+            x: dragStartRef.current.camX - camDx,
+            y: dragStartRef.current.camY - camDy,
+          },
+        })
+      }
+
+      // Update world-space touch position for physics
+      const canvas = canvasRef.current
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect()
+        const screenX = (t.clientX - rect.left) * devicePixelRatio
+        const screenY = (t.clientY - rect.top) * devicePixelRatio
+        mouseWorldRef.current = screenToWorld(screenX, screenY, state.camera)
+      }
+    } else if (ts.mode === 'pinch' && e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]]
+      const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY)
+      const midX = (a.clientX + b.clientX) / 2
+      const midY = (a.clientY + b.clientY) / 2
+
+      // Zoom
+      const scale = dist / ts.lastDist
+      const newZoom = Math.max(0.15, Math.min(5, state.camera.zoom * scale))
+
+      // Pan
+      const panDx = (midX - dragStartRef.current.x) / state.camera.zoom
+      const panDy = (midY - dragStartRef.current.y) / state.camera.zoom
+
+      dispatch({
+        type: 'SET_CAMERA',
+        camera: {
+          zoom: newZoom,
+          x: dragStartRef.current.camX - panDx,
+          y: dragStartRef.current.camY - panDy,
+        },
+      })
+
+      ts.lastDist = dist
+      ts.lastMidX = midX
+      ts.lastMidY = midY
+      dragStartRef.current = {
+        x: midX,
+        y: midY,
+        camX: state.camera.x,
+        camY: state.camera.y,
+      }
+    }
+  }, [state.camera, dispatch, screenToWorld])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault()
+    const ts = touchStateRef.current
+
+    // Tap to select (short touch, didn't move)
+    if (ts.mode === 'pan' && !ts.moved && Date.now() - ts.startTime < 300) {
+      const canvas = canvasRef.current
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect()
+        const screenX = (ts.startX - rect.left) * devicePixelRatio
+        const screenY = (ts.startY - rect.top) * devicePixelRatio
+        const world = screenToWorld(screenX, screenY, state.camera)
+
+        let found = false
+        for (const b of state.bacteria) {
+          const dx = world.x - b.x
+          const dy = world.y - b.y
+          // Slightly larger hit area on mobile
+          if (Math.sqrt(dx * dx + dy * dy) < b.radius * 1.5) {
+            dispatch({ type: 'SELECT', id: b.id })
+            found = true
+            break
+          }
+        }
+        if (!found) dispatch({ type: 'SELECT', id: null })
+      }
+    }
+
+    // Reset if all fingers lifted
+    if (e.touches.length === 0) {
+      ts.mode = 'none'
+    } else if (e.touches.length === 1 && ts.mode === 'pinch') {
+      // Went from pinch to single finger — restart pan from current position
+      ts.mode = 'pan'
+      ts.moved = true // don't trigger tap
+      const t = e.touches[0]
+      dragStartRef.current = {
+        x: t.clientX,
+        y: t.clientY,
+        camX: state.camera.x,
+        camY: state.camera.y,
+      }
+    }
+  }, [state.camera, state.bacteria, screenToWorld, dispatch])
+
   return (
     <div
       ref={containerRef}
@@ -522,12 +679,16 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
+        style={{ touchAction: 'none' }}
         onWheel={handleWheel}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onClick={handleClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       />
     </div>
   )

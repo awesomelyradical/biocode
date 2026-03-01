@@ -51,8 +51,11 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
         <div className="text-xs text-muted-foreground">
           Zoom: {(state.camera.zoom * 100).toFixed(0)}%
         </div>
-        <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+        <div className="text-[10px] text-muted-foreground/60 mt-0.5 hidden md:block">
           Scroll to zoom · Shift+drag to pan
+        </div>
+        <div className="text-[10px] text-muted-foreground/60 mt-0.5 md:hidden">
+          Pinch to zoom · Drag to pan
         </div>
       </div>
 
@@ -76,12 +79,13 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
             <span>Drag: {selectedBacterium.properties.friction.toFixed(2)}x</span>
             <span>Repro: {selectedBacterium.properties.reproductionRate.toFixed(2)}x</span>
           </div>
-          <div className="text-[10px] text-primary/60 mt-1">Click to open mod panel</div>
+          <div className="text-[10px] text-primary/60 mt-1 hidden md:block">Click to open mod panel</div>
+          <div className="text-[10px] text-primary/60 mt-1 md:hidden">Tap to open mod panel</div>
         </div>
       )}
 
       {/* Restart + Store + Game title — bottom right */}
-      <div className="absolute bottom-3 right-3 z-30 flex items-center gap-3">
+      <div className="absolute bottom-3 right-3 z-30 flex flex-wrap items-center justify-end gap-2 max-w-[calc(100vw-1.5rem)]">
         {multiplayerInfo ? (
           <>
             {multiplayerInfo.roomCode && (
