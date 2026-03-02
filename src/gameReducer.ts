@@ -26,10 +26,10 @@ let nutrientId = 0
 
 /**
  * Scatter nutrient particles at a death site.
- * Spawns 3–6 particles that drift outward with random velocities.
+ * Bigger bacteria spawn more particles (scaled by sizeFactor).
  */
-function spawnNutrients(x: number, y: number, energy: number, color: string): Nutrient[] {
-  const count = 3 + Math.floor(Math.random() * 4) // 3–6 particles
+function spawnNutrients(x: number, y: number, energy: number, color: string, sizeFactor: number = 1): Nutrient[] {
+  const count = Math.floor((3 + Math.random() * 4) * Math.max(1, sizeFactor)) // more particles for bigger bacteria
   const perParticle = energy / count
   const nutrients: Nutrient[] = []
   for (let i = 0; i < count; i++) {
@@ -359,12 +359,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       const alive = updated.filter(b => !toRemove.has(b.id))
 
-      // Spawn nutrients from dead bacteria
+      // Spawn nutrients from dead bacteria — bigger ones release more
       const newNutrients: Nutrient[] = []
       for (const b of updated) {
         if (toRemove.has(b.id)) {
           const sp = species.find(s => s.id === b.speciesId)!
-          newNutrients.push(...spawnNutrients(b.x, b.y, Math.max(10, b.energy + 20), sp.color))
+          const sizeBonus = b.radius / sp.baseSize // >1 for bigger-than-base bacteria
+          const deathEnergy = Math.max(10, (b.energy + 20) * sizeBonus)
+          newNutrients.push(...spawnNutrients(b.x, b.y, deathEnergy, sp.color, sizeBonus))
         }
       }
 
