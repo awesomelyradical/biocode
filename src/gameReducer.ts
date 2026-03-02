@@ -115,6 +115,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           }
         }
 
+        // ── Nutrient attraction ──
+        for (const n of state.nutrients) {
+          const ndx = n.x - b.x
+          const ndy = n.y - b.y
+          const ndist = Math.sqrt(ndx * ndx + ndy * ndy)
+          if (ndist > effectiveSense || ndist < 1) continue
+          const strength = 0.05 * effectiveSpeed * (1 - ndist / effectiveSense)
+          nvx += (ndx / ndist) * strength
+          nvy += (ndy / ndist) * strength
+        }
+
         // ── Species affinity forces ──
         for (const other of state.bacteria) {
           if (other.id === b.id) continue
