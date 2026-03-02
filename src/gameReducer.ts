@@ -272,7 +272,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return {
           ...b,
           x: nx, y: ny, vx: nvx, vy: nvy,
-          radius: Math.max(effectiveRadius, b.radius),
+          radius: sp.baseSize * b.properties.size,
           age: b.age + 1,
           energy: newEnergy,
           angle: Math.atan2(nvy, nvx),
@@ -415,10 +415,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist < b.radius + n.radius + 2) {
             b.energy = Math.min(100, b.energy + n.energy)
-            // Grow slightly from feeding — scale with nutrient energy
+            // Grow size trait from feeding — capped at 3× base
+            const maxSizeTrait = BASE_TRAIT_POINTS * 3
+            const sizeGrowth = n.energy * 0.06
+            const newSizeTrait = Math.min(maxSizeTrait, b.plasmid.traits.size + sizeGrowth)
+            b.plasmid = { ...b.plasmid, traits: { ...b.plasmid.traits, size: newSizeTrait } }
             const sp = species.find(s => s.id === b.speciesId)!
-            const maxRadius = sp.baseSize * b.properties.size * 3 // cap at 3× base
-            b.radius = Math.min(maxRadius, b.radius + n.energy * 0.08)
+            b.properties = plasmidToProperties(b.plasmid, sp.color)
+            b.radius = sp.baseSize * b.properties.size
             absorbedNutrients.add(n.id)
             return n
           }
