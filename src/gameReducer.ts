@@ -370,8 +370,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
 
-      // Ambient nutrient spawning (~1 particle every 10 ticks on average)
-      if (Math.random() < 0.1) {
+      // Ambient nutrient spawning (~1 particle every 3 ticks on average)
+      if (Math.random() < 0.3) {
         const angle = Math.random() * Math.PI * 2
         const dist = Math.sqrt(Math.random()) * (state.worldRadius - 50)
         const ncx = state.worldRadius
@@ -382,8 +382,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           y: ncy + Math.sin(angle) * dist,
           vx: (Math.random() - 0.5) * 0.3,
           vy: (Math.random() - 0.5) * 0.3,
-          energy: 3 + Math.random() * 5,
-          radius: 2 + Math.random() * 1.5,
+          energy: 6 + Math.random() * 8,
+          radius: 2.5 + Math.random() * 2,
           color: 'oklch(0.78 0.12 145)', // neutral green
           age: 0,
           maxAge: 600 + Math.floor(Math.random() * 400), // 20–33 seconds

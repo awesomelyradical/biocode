@@ -19,6 +19,7 @@ import { useReducer, useEffect, useRef, useCallback, useState } from 'react'
 import { PetriDish } from './components/PetriDish'
 import { BacteriaModPanel } from './components/BacteriaModPanel'
 import { StorePanel } from './components/StorePanel'
+import { EquipSidebar } from './components/EquipSidebar'
 import { HUD } from './components/HUD'
 import { MultiplayerGame } from './components/MultiplayerGame'
 import { MultiplayerLobby } from './components/MultiplayerLobby'
@@ -300,6 +301,7 @@ function App() {
     <div className="relative w-full h-screen overflow-hidden bg-background">
       <PetriDish state={state} dispatch={dispatch} mouseWorldRef={mouseWorldRef} />
       <HUD state={state} dispatch={dispatch} onOpenStore={() => setShowStore(true)} />
+      <EquipSidebar state={state} dispatch={dispatch} />
       {selectedBacterium && (
         <BacteriaModPanel
           bacterium={selectedBacterium}
