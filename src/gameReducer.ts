@@ -210,7 +210,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const newEnergy = Math.min(100, Math.max(0, b.energy + energyGain - energyCost))
 
         // Reproduction check — fecundity lowers threshold, lifespan raises it
-        const reproThreshold = sp.baseReproductionRate * b.properties.reproductionRate * (1 + lfMod * 0.5)
+        // Size pressure: larger bacteria have much lower reproduction thresholds
+        const sizeMultiplier = b.properties.size
+        const sizePressure = sizeMultiplier > 1.2 ? Math.max(0.1, 1 - (sizeMultiplier - 1.2) * 0.6) : 1
+        const reproThreshold = sp.baseReproductionRate * b.properties.reproductionRate * (1 + lfMod * 0.5) * sizePressure
         // Must be large enough that halving still leaves >= 0.5 base size
         const canSplit = b.properties.size >= 1.0
         if (canSplit && newEnergy > reproThreshold && state.bacteria.length + newBacteria.length < 200) {
@@ -264,9 +267,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           }
         }
 
-        // Death check — starvation or burst (3x original size)
-        if (newEnergy <= 0 || b.properties.size > 3.0) {
+        // Death check — starvation, or increasing chance above 2.5× size (certain at 3×)
+        if (newEnergy <= 0) {
           toRemove.add(b.id)
+        } else if (b.properties.size > 2.5) {
+          // Probability ramps from 0% at 2.5× to ~100% at 3×
+          const burstChance = Math.min(1, (b.properties.size - 2.5) * 2)
+          if (Math.random() < burstChance * 0.1) { // per-tick chance, so ~10% per tick at 3×
+            toRemove.add(b.id)
+          }
         }
 
         return {
