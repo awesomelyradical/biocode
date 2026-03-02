@@ -81,21 +81,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         let nvy = b.vy + Math.sin(wanderAngle) * wanderForce
 
         // ── Movement pattern effects ──
+        // Patterns fade in and out — active ~60% of the time with smooth transitions
         if (b.movementPattern) {
           const t = b.age * 0.05
+          const cycle = Math.sin(t * 0.4) // slow oscillation for on/off
+          const patternStrength = Math.max(0, cycle * 1.5) // 0 when "resting", up to ~1 when active
           switch (b.movementPattern) {
             case 'pattern-spiral': {
-              // Constant rotational force perpendicular to velocity
-              const spiralStr = 0.06 * effectiveSpeed
+              const spiralStr = 0.03 * effectiveSpeed * patternStrength
               nvx += Math.cos(t * 2) * spiralStr
               nvy += Math.sin(t * 2) * spiralStr
               break
             }
             case 'pattern-zigzag': {
-              // Sharp alternating lateral force
               const zigDir = Math.sin(t * 4) > 0 ? 1 : -1
               const perpAngle = b.angle + Math.PI / 2
-              const zigStr = 0.08 * effectiveSpeed
+              const zigStr = 0.04 * effectiveSpeed * patternStrength
               nvx += Math.cos(perpAngle) * zigStr * zigDir
               nvy += Math.sin(perpAngle) * zigStr * zigDir
               break
