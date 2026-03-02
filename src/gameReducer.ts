@@ -415,11 +415,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist < b.radius + n.radius + 2) {
             b.energy = Math.min(100, b.energy + n.energy)
-            // Grow size trait from feeding — capped at 3× base
+            // Grow size trait from feeding — increase capacity so other traits stay unchanged
             const maxSizeTrait = BASE_TRAIT_POINTS * 3
             const sizeGrowth = n.energy * 0.06
-            const newSizeTrait = Math.min(maxSizeTrait, b.plasmid.traits.size + sizeGrowth)
-            b.plasmid = { ...b.plasmid, traits: { ...b.plasmid.traits, size: newSizeTrait } }
+            const oldSize = b.plasmid.traits.size
+            const newSizeTrait = Math.min(maxSizeTrait, oldSize + sizeGrowth)
+            const actualGrowth = newSizeTrait - oldSize
+            const newCapacity = b.plasmid.capacity + actualGrowth
+            b.plasmid = {
+              capacity: newCapacity,
+              traits: { ...b.plasmid.traits, size: newSizeTrait },
+            }
             const sp = species.find(s => s.id === b.speciesId)!
             b.properties = plasmidToProperties(b.plasmid, sp.color)
             b.radius = sp.baseSize * b.properties.size
