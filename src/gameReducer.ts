@@ -654,6 +654,36 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
     }
 
+    case 'DROP_NUTRIENTS': {
+      if (state.store.equipped.tools !== 'tool-nutrient-dropper') return state
+      const dropCost = 3
+      if (state.biomass < dropCost) return state
+      // Spawn a cluster of 5-8 nutrient particles at the click location
+      const dropCount = 5 + Math.floor(Math.random() * 4)
+      const dropNutrients: Nutrient[] = []
+      for (let i = 0; i < dropCount; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const spread = Math.random() * 20
+        dropNutrients.push({
+          id: `n${nutrientId++}`,
+          x: action.x + Math.cos(angle) * spread,
+          y: action.y + Math.sin(angle) * spread,
+          vx: Math.cos(angle) * 0.2,
+          vy: Math.sin(angle) * 0.2,
+          energy: 8 + Math.random() * 6,
+          radius: 3 + Math.random() * 2,
+          color: 'oklch(0.82 0.16 90)',
+          age: 0,
+          maxAge: 500 + Math.floor(Math.random() * 300),
+        })
+      }
+      return {
+        ...state,
+        nutrients: [...state.nutrients, ...dropNutrients],
+        biomass: state.biomass - dropCost,
+      }
+    }
+
     default:
       return state
   }

@@ -72,7 +72,7 @@ function createRoomState(): GameState {
     biomass: 0,
     store: {
       unlocked: new Set<string>(),
-      equipped: { colors: null, patterns: null, backgrounds: null, music: null },
+      equipped: { colors: null, patterns: null, backgrounds: null, music: null, tools: null },
     },
   }
 }

@@ -253,6 +253,9 @@ export const STORE_ITEMS: StoreItem[] = [
   { id: 'music-ambient-hum',  category: 'music', name: 'Ambient Hum',       description: 'Deep resonant background hum',  cost: 60,  icon: '🎵' },
   { id: 'music-heartbeat',    category: 'music', name: 'Heartbeat',         description: 'Rhythmic heartbeat pulse',      cost: 80,  icon: '💗' },
   { id: 'music-static',       category: 'music', name: 'Static',            description: 'Crackling radio static',        cost: 60,  icon: '📻' },
+
+  // Tools
+  { id: 'tool-nutrient-dropper', category: 'tools', name: 'Nutrient Dropper', description: 'Click to place nutrient clusters (3 biomass each)', cost: 75, icon: '💧' },
   { id: 'music-synth-wave',   category: 'music', name: 'Synth Wave',        description: 'Retro synthwave ambience',      cost: 100, icon: '🎹' },
   { id: 'music-nature',       category: 'music', name: 'Nature',            description: 'Rain and wind sounds',          cost: 80,  icon: '🌧️' },
 ]

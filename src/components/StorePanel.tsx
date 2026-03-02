@@ -24,6 +24,7 @@ const CATEGORIES: { key: StoreCategory; label: string; icon: string }[] = [
   { key: 'patterns', label: 'Patterns', icon: '🌀' },
   { key: 'backgrounds', label: 'Backgrounds', icon: '🖼️' },
   { key: 'music', label: 'Music', icon: '🎵' },
+  { key: 'tools', label: 'Tools', icon: '🧪' },
 ]
 
 export function StorePanel({ state, dispatch, onClose }: StorePanelProps) {

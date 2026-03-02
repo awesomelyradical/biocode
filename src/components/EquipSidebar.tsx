@@ -12,6 +12,7 @@ const CATEGORIES: { key: StoreCategory; icon: string; label: string }[] = [
   { key: 'patterns', icon: '🌀', label: 'Patterns' },
   { key: 'backgrounds', icon: '🖼️', label: 'Backgrounds' },
   { key: 'music', icon: '🎵', label: 'Music' },
+  { key: 'tools', icon: '🧪', label: 'Tools' },
 ]
 
 export function EquipSidebar({ state, dispatch }: EquipSidebarProps) {

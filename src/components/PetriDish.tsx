@@ -612,9 +612,14 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
         return
       }
     }
+    // If nutrient dropper is equipped, place nutrients instead of deselecting
+    if (state.store.equipped.tools === 'tool-nutrient-dropper') {
+      dispatch({ type: 'DROP_NUTRIENTS', x: world.x, y: world.y })
+      return
+    }
     // Click on empty space deselects
     dispatch({ type: 'SELECT', id: null })
-  }, [state.camera, state.bacteria, screenToWorld, dispatch])
+  }, [state.camera, state.bacteria, state.store.equipped.tools, screenToWorld, dispatch])
 
   // ── Touch Handlers ──
 

@@ -106,8 +106,8 @@ export interface Nutrient {
   maxAge: number
 }
 
-/** The four cosmetic store categories. */
-export type StoreCategory = 'colors' | 'patterns' | 'backgrounds' | 'music'
+/** Store categories: four cosmetic + one gameplay tools. */
+export type StoreCategory = 'colors' | 'patterns' | 'backgrounds' | 'music' | 'tools'
 
 /** A purchasable cosmetic item in the store. */
 export interface StoreItem {
@@ -152,6 +152,7 @@ export type GameAction =
   | { type: 'BUY_ITEM'; itemId: string }
   | { type: 'EQUIP_ITEM'; itemId: string; category: StoreCategory }
   | { type: 'UNEQUIP_ITEM'; category: StoreCategory }
+  | { type: 'DROP_NUTRIENTS'; x: number; y: number }
 
 /** The complete, serialisable game state passed through the reducer. */
 export interface GameState {

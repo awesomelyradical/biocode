@@ -44,7 +44,7 @@ const initialState: GameState = {
   biomass: 0,
   store: {
     unlocked: new Set(['bg-dark-void']),
-    equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null },
+    equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
   },
 }
 

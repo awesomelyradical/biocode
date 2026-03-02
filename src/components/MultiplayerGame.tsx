@@ -66,7 +66,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
         biomass: 0,
         store: {
           unlocked: new Set<string>(['bg-dark-void']),
-          equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null },
+          equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
         },
       }
     }
@@ -84,7 +84,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
       biomass: 0,
       store: {
         unlocked: new Set<string>(['bg-dark-void']),
-        equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null },
+        equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
       },
     }
   }, [mp.sharedState, camera, selectedId])
