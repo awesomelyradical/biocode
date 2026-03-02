@@ -74,11 +74,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const effectiveFriction = Math.max(0.90, Math.min(0.999, sp.baseFriction * baseDragFromArea * stickyMod))
         const effectiveSense = sp.baseSenseRadius * b.properties.senseRadius
 
-        // Random wandering impulse
+        // Brownian motion + wandering impulse (smaller cells jitter more)
+        const brownianScale = 0.04 / Math.sqrt(effectiveMass)
+        const bx = (Math.random() - 0.5) * brownianScale
+        const by = (Math.random() - 0.5) * brownianScale
         const wanderAngle = b.angle + (Math.random() - 0.5) * 0.3
         const wanderForce = 0.02 * effectiveSpeed
-        let nvx = b.vx + Math.cos(wanderAngle) * wanderForce
-        let nvy = b.vy + Math.sin(wanderAngle) * wanderForce
+        let nvx = b.vx + Math.cos(wanderAngle) * wanderForce + bx
+        let nvy = b.vy + Math.sin(wanderAngle) * wanderForce + by
 
         // ── Movement pattern effects ──
         // Patterns fade in and out — active ~60% of the time with smooth transitions
@@ -444,8 +447,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         }
         return {
           ...n,
-          x: n.x + n.vx,
-          y: n.y + n.vy,
+          x: n.x + n.vx + (Math.random() - 0.5) * 0.3,
+          y: n.y + n.vy + (Math.random() - 0.5) * 0.3,
           vx: n.vx * 0.98,
           vy: n.vy * 0.98,
           age: n.age + 1,
