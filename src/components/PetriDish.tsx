@@ -41,6 +41,32 @@ function drawBacterium(
   ctx.translate(b.x, b.y)
   ctx.rotate(b.angle)
 
+  // Split animation: squash & stretch + expanding ring
+  const sp_phase = b.splitPhase ?? 0
+  if (sp_phase > 0) {
+    const squeeze = 1 + sp_phase * 0.35
+    const stretch = 1 - sp_phase * 0.2
+    ctx.scale(squeeze, stretch)
+
+    // Expanding split ring
+    const ringR = r + sp_phase * r * 1.5
+    const ringAlpha = sp_phase * 0.5
+    ctx.beginPath()
+    ctx.arc(0, 0, ringR, 0, Math.PI * 2)
+    ctx.strokeStyle = color.replace(')', ` / ${ringAlpha.toFixed(2)})`)
+    ctx.lineWidth = 2 * sp_phase
+    ctx.stroke()
+
+    // Inner glow burst
+    const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * (1 + sp_phase))
+    glowGrad.addColorStop(0, color.replace(')', ` / ${(sp_phase * 0.4).toFixed(2)})`))
+    glowGrad.addColorStop(1, 'transparent')
+    ctx.beginPath()
+    ctx.arc(0, 0, r * (1 + sp_phase), 0, Math.PI * 2)
+    ctx.fillStyle = glowGrad
+    ctx.fill()
+  }
+
   // Membrane glow (enhanced when hovered = "caught" by cursor)
   if (isSelected || isHovered) {
     // Outer soft glow

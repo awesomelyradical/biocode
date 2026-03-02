@@ -247,6 +247,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           child.behavior = { ...b.behavior }
           child.radius = sp.baseSize * child.properties.size
           child.energy = 30
+          child.splitPhase = 1
           newBacteria.push(child)
 
           // Halve parent's size trait too, floor at half base
@@ -267,6 +268,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             energy: newEnergy - 40,
             angle: Math.atan2(nvy, nvx),
             flagellaPhase: b.flagellaPhase + 0.15,
+            splitPhase: 1,
           }
         }
 
@@ -289,6 +291,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           energy: newEnergy,
           angle: Math.atan2(nvy, nvx),
           flagellaPhase: b.flagellaPhase + 0.15,
+          splitPhase: b.splitPhase ? Math.max(0, b.splitPhase - 0.06) : undefined,
         }
       })
 

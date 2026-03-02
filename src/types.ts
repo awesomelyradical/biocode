@@ -82,6 +82,7 @@ export interface BacteriaState {
   flagellaPhase: number   // animation phase for flagella
   membraneColor?: string  // custom membrane color from store
   movementPattern?: string // store pattern id (e.g. 'pattern-spiral')
+  splitPhase?: number      // 1 = just split, decays to 0 (animation)
 }
 
 /** Viewport camera (world-space center + zoom level). */
