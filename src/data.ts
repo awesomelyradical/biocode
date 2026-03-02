@@ -12,20 +12,19 @@ import type { Species, BacteriaState, BacteriaProperties, TraitKey, Plasmid, Beh
 
 // ── Trait System ──
 
-export const TRAIT_KEYS: TraitKey[] = ['speed', 'size', 'friction', 'restitution', 'senseRadius', 'reproductionRate']
+export const TRAIT_KEYS: TraitKey[] = ['speed', 'size', 'restitution', 'senseRadius', 'reproductionRate']
 export const BASE_TRAIT_POINTS = 10
-export const INITIAL_PLASMID_CAPACITY = 60 // 10 per trait × 6 traits
+export const INITIAL_PLASMID_CAPACITY = 50 // 10 per trait × 5 traits
 
 export const TRAIT_CONFIGS: Record<TraitKey, { label: string; color: string; description: string }> = {
   speed:            { label: 'Speed',  color: '#40b8c4', description: 'Movement velocity' },
   size:             { label: 'Size',   color: '#cc8833', description: 'Physical mass & radius' },
-  friction:         { label: 'Drag',   color: '#8855bb', description: 'Resistance to motion' },
   restitution:      { label: 'Bounce', color: '#bbaa33', description: 'Collision elasticity' },
   senseRadius:      { label: 'Sense',  color: '#cc4488', description: 'Detection range' },
   reproductionRate: { label: 'Repro',  color: '#55aa55', description: 'Reproduction threshold' },
 }
 
-export const BEHAVIOR_KEYS: BehaviorKey[] = ['kinAffinity', 'xenoAffinity', 'lifeFecundity', 'aggression', 'permeability']
+export const BEHAVIOR_KEYS: BehaviorKey[] = ['kinAffinity', 'xenoAffinity', 'lifeFecundity', 'aggression', 'permeability', 'stickiness']
 
 export const BEHAVIOR_CONFIGS: Record<BehaviorKey, { label: string; color: string; description: string; min: number; max: number; step: number }> = {
   kinAffinity:    { label: 'Kin Affinity',   color: '#44bb77', description: 'Attract (+) or repel (-) own species',   min: -1, max: 1, step: 0.1 },
@@ -33,6 +32,7 @@ export const BEHAVIOR_CONFIGS: Record<BehaviorKey, { label: string; color: strin
   lifeFecundity:  { label: 'Life / Fecund',  color: '#7799dd', description: 'Long-lived (+) vs fertile (-)',           min: -1, max: 1, step: 0.1 },
   aggression:     { label: 'Aggression',     color: '#dd4444', description: 'Predatory tendency when colliding',      min: 0,  max: 1, step: 0.1 },
   permeability:   { label: 'Permeability',   color: '#aa77cc', description: 'Gene uptake chance on eating',            min: 0,  max: 1, step: 0.1 },
+  stickiness:    { label: 'Stickiness',    color: '#8855bb', description: 'Surface adhesion — increases drag',          min: 0,  max: 1, step: 0.1 },
 }
 
 /** Create a new behavior stats object with neutral defaults. */
@@ -43,6 +43,7 @@ export function createDefaultBehavior(): BehaviorStats {
     lifeFecundity: 0,
     aggression: 0.3,
     permeability: 0.4,
+    stickiness: 0.3,
   }
 }
 
@@ -62,7 +63,6 @@ export function plasmidToProperties(plasmid: Plasmid, color: string): BacteriaPr
   return {
     speed: plasmid.traits.speed / BASE_TRAIT_POINTS,
     size: plasmid.traits.size / BASE_TRAIT_POINTS,
-    friction: plasmid.traits.friction / BASE_TRAIT_POINTS,
     restitution: plasmid.traits.restitution / BASE_TRAIT_POINTS,
     senseRadius: plasmid.traits.senseRadius / BASE_TRAIT_POINTS,
     reproductionRate: plasmid.traits.reproductionRate / BASE_TRAIT_POINTS,
@@ -189,6 +189,9 @@ export function createBacteria(
     energy: 50 + Math.random() * 30,
     angle,
     flagellaPhase: Math.random() * Math.PI * 2,
+    movementPattern: speciesId === 'spirillum' ? 'pattern-spiral'
+      : speciesId === 'bacillus' ? 'pattern-zigzag'
+      : undefined,
   }
 }
 

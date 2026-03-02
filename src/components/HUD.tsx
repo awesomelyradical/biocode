@@ -89,7 +89,7 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
             <span>Size: {selectedBacterium.properties.size.toFixed(2)}x</span>
             <span>Sense: {selectedBacterium.properties.senseRadius.toFixed(2)}x</span>
             <span>Bounce: {selectedBacterium.properties.restitution.toFixed(2)}x</span>
-            <span>Drag: {selectedBacterium.properties.friction.toFixed(2)}x</span>
+            <span>Sticky: {selectedBacterium.behavior.stickiness.toFixed(2)}</span>
             <span>Repro: {selectedBacterium.properties.reproductionRate.toFixed(2)}x</span>
           </div>
           <div className="text-[10px] text-primary/60 mt-1 hidden md:block">Click to open mod panel</div>

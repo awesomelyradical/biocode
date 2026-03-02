@@ -65,9 +65,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const updated = state.bacteria.map(b => {
         const sp = species.find(s => s.id === b.speciesId)!
         const effectiveSpeed = sp.baseSpeed * b.properties.speed
-        const effectiveFriction = sp.baseFriction * b.properties.friction
         const effectiveMass = sp.baseMass * b.properties.size
         const effectiveRadius = sp.baseSize * b.properties.size
+        // Drag from surface area (radius²) and stickiness behavior
+        const surfaceArea = effectiveRadius * effectiveRadius
+        const baseDragFromArea = 1 - (surfaceArea / 2000) // larger = more drag
+        const stickyMod = 1 - b.behavior.stickiness * 0.03 // stickiness adds drag
+        const effectiveFriction = Math.max(0.90, Math.min(0.999, sp.baseFriction * baseDragFromArea * stickyMod))
         const effectiveSense = sp.baseSenseRadius * b.properties.senseRadius
 
         // Random wandering impulse

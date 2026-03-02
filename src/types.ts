@@ -27,8 +27,8 @@ export interface Species {
   description: string
 }
 
-/** The six adjustable genetic traits carried on a bacterium's plasmid. */
-export type TraitKey = 'speed' | 'size' | 'friction' | 'restitution' | 'senseRadius' | 'reproductionRate'
+/** The five adjustable genetic traits carried on a bacterium's plasmid. */
+export type TraitKey = 'speed' | 'size' | 'restitution' | 'senseRadius' | 'reproductionRate'
 
 /**
  * A plasmid is a fixed-capacity pool of trait points.
@@ -49,6 +49,7 @@ export interface BehaviorStats {
   lifeFecundity: number     // -1 short-lived/fertile … +1 long-lived/barren
   aggression: number        //  0 passive … 1 predatory
   permeability: number      //  0 sealed … 1 porous (gene transfer chance)
+  stickiness: number        //  0 frictionless … 1 very sticky (increases drag)
 }
 
 export type BehaviorKey = keyof BehaviorStats
@@ -57,7 +58,6 @@ export type BehaviorKey = keyof BehaviorStats
 export interface BacteriaProperties {
   speed: number
   size: number
-  friction: number
   restitution: number
   senseRadius: number
   reproductionRate: number
