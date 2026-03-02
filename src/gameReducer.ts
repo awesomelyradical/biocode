@@ -415,6 +415,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist < b.radius + n.radius + 2) {
             b.energy = Math.min(100, b.energy + n.energy)
+            // Grow slightly from feeding — scale with nutrient energy
+            const sp = species.find(s => s.id === b.speciesId)!
+            const maxRadius = sp.baseSize * b.properties.size * 3 // cap at 3× base
+            b.radius = Math.min(maxRadius, b.radius + n.energy * 0.08)
             absorbedNutrients.add(n.id)
             return n
           }
