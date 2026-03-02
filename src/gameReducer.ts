@@ -272,7 +272,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return {
           ...b,
           x: nx, y: ny, vx: nvx, vy: nvy,
-          radius: effectiveRadius,
+          radius: Math.max(effectiveRadius, b.radius),
           age: b.age + 1,
           energy: newEnergy,
           angle: Math.atan2(nvy, nvx),
