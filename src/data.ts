@@ -197,25 +197,29 @@ export function createBacteria(
  * Used at game start and on restart.
  */
 export function spawnInitialPopulation(
-  worldWidth: number,
-  worldHeight: number,
+  worldRadius: number,
   count: number = 20,
 ): BacteriaState[] {
   const bacteria: BacteriaState[] = []
-  const margin = 100
+  const cx = worldRadius
+  const cy = worldRadius
 
   for (let i = 0; i < count; i++) {
     const sp = species[Math.floor(Math.random() * species.length)]
-    const x = margin + Math.random() * (worldWidth - margin * 2)
-    const y = margin + Math.random() * (worldHeight - margin * 2)
+    // Random point inside circle
+    const angle = Math.random() * Math.PI * 2
+    const dist = Math.sqrt(Math.random()) * (worldRadius - 100)
+    const x = cx + Math.cos(angle) * dist
+    const y = cy + Math.sin(angle) * dist
     bacteria.push(createBacteria(sp.id, x, y))
   }
 
   return bacteria
 }
 
-export const WORLD_WIDTH = 3000
-export const WORLD_HEIGHT = 2000
+export const WORLD_RADIUS = 2500
+export const WORLD_WIDTH = WORLD_RADIUS * 2
+export const WORLD_HEIGHT = WORLD_RADIUS * 2
 
 // ── Store Items ──
 

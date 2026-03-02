@@ -20,7 +20,7 @@
  */
 
 import type { GameState, GameAction, BacteriaState, TraitKey, BehaviorKey, Nutrient, StoreCategory } from './types'
-import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, STORE_ITEMS } from './data'
+import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS, STORE_ITEMS } from './data'
 
 let nutrientId = 0
 
@@ -165,21 +165,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         let nx = b.x + nvx
         let ny = b.y + nvy
 
-        // World boundary bounce
+        // World boundary bounce (circular)
         const padding = effectiveRadius + 5
-        if (nx < padding) {
-          nx = padding
-          nvx = Math.abs(nvx) * sp.baseRestitution * b.properties.restitution
-        } else if (nx > state.worldWidth - padding) {
-          nx = state.worldWidth - padding
-          nvx = -Math.abs(nvx) * sp.baseRestitution * b.properties.restitution
-        }
-        if (ny < padding) {
-          ny = padding
-          nvy = Math.abs(nvy) * sp.baseRestitution * b.properties.restitution
-        } else if (ny > state.worldHeight - padding) {
-          ny = state.worldHeight - padding
-          nvy = -Math.abs(nvy) * sp.baseRestitution * b.properties.restitution
+        const cx = state.worldRadius
+        const cy = state.worldRadius
+        const dxFromCenter = nx - cx
+        const dyFromCenter = ny - cy
+        const distFromCenter = Math.sqrt(dxFromCenter * dxFromCenter + dyFromCenter * dyFromCenter)
+        const maxDist = state.worldRadius - padding
+        if (distFromCenter > maxDist) {
+          // Push back inside the circle
+          const normX = dxFromCenter / distFromCenter
+          const normY = dyFromCenter / distFromCenter
+          nx = cx + normX * maxDist
+          ny = cy + normY * maxDist
+          // Reflect velocity off the circular wall
+          const dot = (nvx * normX + nvy * normY)
+          const restitution = sp.baseRestitution * b.properties.restitution
+          nvx = (nvx - 2 * dot * normX) * restitution
+          nvy = (nvy - 2 * dot * normY) * restitution
         }
 
         // Energy: slowly gain, cost based on size and speed
@@ -361,11 +365,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Ambient nutrient spawning (~1 particle every 10 ticks on average)
       if (Math.random() < 0.1) {
-        const margin = 50
+        const angle = Math.random() * Math.PI * 2
+        const dist = Math.sqrt(Math.random()) * (state.worldRadius - 50)
+        const ncx = state.worldRadius
+        const ncy = state.worldRadius
         newNutrients.push({
           id: `n${nutrientId++}`,
-          x: margin + Math.random() * (state.worldWidth - margin * 2),
-          y: margin + Math.random() * (state.worldHeight - margin * 2),
+          x: ncx + Math.cos(angle) * dist,
+          y: ncy + Math.sin(angle) * dist,
           vx: (Math.random() - 0.5) * 0.3,
           vy: (Math.random() - 0.5) * 0.3,
           energy: 3 + Math.random() * 5,
@@ -558,11 +565,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'RESTART': {
       return {
         ...state,
-        bacteria: spawnInitialPopulation(WORLD_WIDTH, WORLD_HEIGHT, 25),
+        bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
         nutrients: [],
         selectedId: null,
         tick: 0,
-        camera: { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2, zoom: 0.5 },
+        camera: { x: WORLD_RADIUS, y: WORLD_RADIUS, zoom: 0.4 },
         paused: false,
       }
     }

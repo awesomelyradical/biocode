@@ -25,7 +25,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
 import { WebSocketServer, WebSocket } from 'ws'
 import { gameReducer } from './src/gameReducer.ts'
-import { species, spawnInitialPopulation, WORLD_WIDTH, WORLD_HEIGHT } from './src/data.ts'
+import { species, spawnInitialPopulation, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS } from './src/data.ts'
 import type { GameState } from './src/types.ts'
 import type { ClientMessage, ServerMessage, SharedGameState } from './src/shared/protocol.ts'
 
@@ -59,7 +59,7 @@ function generateRoomCode(): string {
 /** Build the initial GameState for a new room. */
 function createRoomState(): GameState {
   return {
-    bacteria: spawnInitialPopulation(WORLD_WIDTH, WORLD_HEIGHT, 25),
+    bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
     nutrients: [],
     species,
     camera: { x: 0, y: 0, zoom: 1 },
@@ -67,6 +67,7 @@ function createRoomState(): GameState {
     tick: 0,
     worldWidth: WORLD_WIDTH,
     worldHeight: WORLD_HEIGHT,
+    worldRadius: WORLD_RADIUS,
     paused: false,
     biomass: 0,
     store: {
@@ -84,6 +85,7 @@ function extractSharedState(state: GameState): SharedGameState {
     tick: state.tick,
     worldWidth: state.worldWidth,
     worldHeight: state.worldHeight,
+    worldRadius: state.worldRadius,
     species: state.species,
   }
 }

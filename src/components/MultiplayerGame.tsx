@@ -14,7 +14,7 @@ import { PetriDish } from './PetriDish'
 import { BacteriaModPanel } from './BacteriaModPanel'
 import { HUD } from './HUD'
 import { useMultiplayer } from '../hooks/useMultiplayer'
-import { species, WORLD_WIDTH, WORLD_HEIGHT } from '../data'
+import { species, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS } from '../data'
 import type { GameState, GameAction, CameraState, BacteriaState } from '../types'
 
 interface MultiplayerGameProps {
@@ -24,7 +24,7 @@ interface MultiplayerGameProps {
 
 export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: MultiplayerGameProps) {
   const mp = useMultiplayer()
-  const [camera, setCamera] = useState<CameraState>({ x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2, zoom: 0.5 })
+  const [camera, setCamera] = useState<CameraState>({ x: WORLD_RADIUS, y: WORLD_RADIUS, zoom: 0.4 })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const mouseWorldRef = useRef({ x: 0, y: 0 })
   const hasJoinedRef = useRef(false)
@@ -61,6 +61,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
         tick: 0,
         worldWidth: WORLD_WIDTH,
         worldHeight: WORLD_HEIGHT,
+        worldRadius: WORLD_RADIUS,
         paused: false,
         biomass: 0,
         store: {
@@ -78,6 +79,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
       tick: mp.sharedState.tick,
       worldWidth: mp.sharedState.worldWidth,
       worldHeight: mp.sharedState.worldHeight,
+      worldRadius: mp.sharedState.worldRadius ?? WORLD_RADIUS,
       paused: false,
       biomass: 0,
       store: {

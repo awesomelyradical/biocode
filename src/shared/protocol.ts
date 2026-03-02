@@ -22,6 +22,7 @@ export interface SharedGameState {
   tick: number
   worldWidth: number
   worldHeight: number
+  worldRadius: number
   species: Species[]
 }
 

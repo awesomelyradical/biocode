@@ -23,21 +23,22 @@ import { HUD } from './components/HUD'
 import { MultiplayerGame } from './components/MultiplayerGame'
 import { MultiplayerLobby } from './components/MultiplayerLobby'
 import { gameReducer } from './gameReducer'
-import { species, spawnInitialPopulation, WORLD_WIDTH, WORLD_HEIGHT } from './data'
+import { species, spawnInitialPopulation, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS } from './data'
 import { playMusic } from './audio'
 import type { GameState } from './types'
 
 type AppScreen = 'splash' | 'singleplayer' | 'mp-lobby' | 'mp-game'
 
 const initialState: GameState = {
-  bacteria: spawnInitialPopulation(WORLD_WIDTH, WORLD_HEIGHT, 25),
+  bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
   nutrients: [],
   species,
-  camera: { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2, zoom: 0.5 },
+  camera: { x: WORLD_RADIUS, y: WORLD_RADIUS, zoom: 0.4 },
   selectedId: null,
   tick: 0,
   worldWidth: WORLD_WIDTH,
   worldHeight: WORLD_HEIGHT,
+  worldRadius: WORLD_RADIUS,
   paused: false,
   biomass: 0,
   store: {

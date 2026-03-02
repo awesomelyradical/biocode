@@ -162,6 +162,7 @@ export interface GameState {
   tick: number
   worldWidth: number
   worldHeight: number
+  worldRadius: number
   paused: boolean
   biomass: number
   store: StoreState

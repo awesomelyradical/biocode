@@ -224,32 +224,50 @@ function drawWorld(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  worldW: number,
-  worldH: number,
+  worldRadius: number,
   gridColor = 'oklch(0.5 0.0 0 / 0.08)',
   borderColor = 'oklch(0.5 0.05 85 / 0.3)',
 ) {
-  // Grid
+  const cx = worldRadius
+  const cy = worldRadius
+
+  // Radial grid lines
   ctx.strokeStyle = gridColor
   ctx.lineWidth = 1
   const gridSize = 100
-  for (let x = 0; x <= worldW; x += gridSize) {
+
+  // Concentric circles
+  for (let r = gridSize; r <= worldRadius; r += gridSize) {
     ctx.beginPath()
-    ctx.moveTo(x, 0)
-    ctx.lineTo(x, worldH)
-    ctx.stroke()
-  }
-  for (let y = 0; y <= worldH; y += gridSize) {
-    ctx.beginPath()
-    ctx.moveTo(0, y)
-    ctx.lineTo(worldW, y)
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
     ctx.stroke()
   }
 
-  // World border
+  // Radial spokes (12 lines, like a clock)
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(cx + Math.cos(angle) * worldRadius, cy + Math.sin(angle) * worldRadius)
+    ctx.stroke()
+  }
+
+  // World border (circular)
   ctx.strokeStyle = borderColor
   ctx.lineWidth = 3
-  ctx.strokeRect(0, 0, worldW, worldH)
+  ctx.beginPath()
+  ctx.arc(cx, cy, worldRadius, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Subtle petri dish rim highlight
+  const rimGrad = ctx.createRadialGradient(cx, cy, worldRadius - 8, cx, cy, worldRadius + 4)
+  rimGrad.addColorStop(0, 'oklch(0.5 0.02 145 / 0)')
+  rimGrad.addColorStop(0.5, 'oklch(0.5 0.04 145 / 0.12)')
+  rimGrad.addColorStop(1, 'oklch(0.3 0.02 145 / 0)')
+  ctx.beginPath()
+  ctx.arc(cx, cy, worldRadius + 4, 0, Math.PI * 2)
+  ctx.fillStyle = rimGrad
+  ctx.fill()
 }
 
 // ── Component ──
@@ -306,7 +324,7 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
     resize()
 
     const render = () => {
-      const { camera, bacteria, nutrients, selectedId, worldWidth, worldHeight } = state
+      const { camera, bacteria, nutrients, selectedId, worldRadius } = state
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -337,7 +355,7 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
         (canvas.height / 2 - camera.y * camera.zoom * dpr),
       )
 
-      drawWorld(ctx, canvas.width, canvas.height, worldWidth, worldHeight)
+      drawWorld(ctx, canvas.width, canvas.height, worldRadius)
 
       // Draw bacteria (back to front, larger ones first for z-sorting)
       const sorted = [...bacteria].sort((a, b) => b.radius - a.radius)
