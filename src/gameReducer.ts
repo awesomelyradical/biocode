@@ -262,7 +262,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const sizePressure = sizeMultiplier > 1.2 ? Math.max(0.1, 1 - (sizeMultiplier - 1.2) * 0.6) : 1
         const reproThreshold = sp.baseReproductionRate * b.properties.reproductionRate * (1 + lfMod * 0.5) * sizePressure * (b.antibioticBoost ? 0.5 : 1)
         // Must be large enough that halving still leaves >= 0.5 base size
-        const canSplit = b.properties.size >= 1.0
+        const canSplit = b.properties.size >= 1.0 && !state.disabledSpecies.includes(b.speciesId)
         if (canSplit && newEnergy > reproThreshold && state.bacteria.length + newBacteria.length < 1000) {
           // Cyanobacteria divide along their facing axis from a free end; others use random angle
           let childAngle = Math.random() * Math.PI * 2
@@ -1089,10 +1089,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
     }
 
+    case 'TOGGLE_SPECIES': {
+      const disabled = state.disabledSpecies.includes(action.speciesId)
+        ? state.disabledSpecies.filter(id => id !== action.speciesId)
+        : [...state.disabledSpecies, action.speciesId]
+      return { ...state, disabledSpecies: disabled }
+    }
+
     case 'RESTART': {
+      const enabled = species.filter(s => !state.disabledSpecies.includes(s.id))
+      const pop = spawnInitialPopulation(WORLD_RADIUS, 25, enabled)
       return {
         ...state,
-        bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
+        bacteria: pop,
         nutrients: [],
         antibiotics: [],
         bonds: [],

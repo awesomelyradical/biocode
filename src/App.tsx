@@ -49,6 +49,7 @@ const initialState: GameState = {
     equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
   },
   nutrientProfile: 'standard',
+  disabledSpecies: [],
 }
 
 function SplashScreen({ onPlay, onMultiplayer }: { onPlay: () => void; onMultiplayer: () => void }) {

@@ -51,14 +51,21 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
           <div className="flex flex-col gap-0.5">
             {species.map(sp => {
               const count = counts.get(sp.id) || 0
-              if (count === 0) return null
+              const disabled = state.disabledSpecies.includes(sp.id)
+              if (count === 0 && !disabled) return null
               return (
                 <div key={sp.id} className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!disabled}
+                    onChange={() => dispatch({ type: 'TOGGLE_SPECIES', speciesId: sp.id })}
+                    className="pointer-events-auto w-3 h-3 accent-primary cursor-pointer"
+                  />
                   <div
                     className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: sp.color }}
+                    style={{ backgroundColor: sp.color, opacity: disabled ? 0.3 : 1 }}
                   />
-                  <span className="text-foreground/80 font-medium w-20">{sp.name}</span>
+                  <span className={`font-medium w-20 ${disabled ? 'text-foreground/30' : 'text-foreground/80'}`}>{sp.name}</span>
                   <span className="text-muted-foreground font-mono">{count}</span>
                 </div>
               )

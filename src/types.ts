@@ -170,6 +170,7 @@ export type GameAction =
   | { type: 'DROP_NUTRIENTS'; x: number; y: number }
   | { type: 'DROP_ANTIBIOTICS'; x: number; y: number }
   | { type: 'SET_NUTRIENT_PROFILE'; profile: NutrientProfileId }
+  | { type: 'TOGGLE_SPECIES'; speciesId: string }
 
 /** Nutrient environment profile controlling ambient spawn rates. */
 export type NutrientProfileId = 'standard' | 'high-nutrient' | 'standard-antibiotic' | 'high-nutrient-antibiotic'
@@ -198,4 +199,5 @@ export interface GameState {
   biomass: number
   store: StoreState
   nutrientProfile: NutrientProfileId
+  disabledSpecies: string[]
 }

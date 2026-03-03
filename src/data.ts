@@ -238,13 +238,15 @@ export function createBacteria(
 export function spawnInitialPopulation(
   worldRadius: number,
   count: number = 20,
+  enabledSpecies: Species[] = species,
 ): BacteriaState[] {
+  if (enabledSpecies.length === 0) return []
   const bacteria: BacteriaState[] = []
   const cx = worldRadius
   const cy = worldRadius
 
   for (let i = 0; i < count; i++) {
-    const sp = species[Math.floor(Math.random() * species.length)]
+    const sp = enabledSpecies[Math.floor(Math.random() * enabledSpecies.length)]
     // Random point inside circle
     const angle = Math.random() * Math.PI * 2
     const dist = Math.sqrt(Math.random()) * (worldRadius - 100)

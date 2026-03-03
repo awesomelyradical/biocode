@@ -71,6 +71,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
           equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
         },
         nutrientProfile: 'standard' as const,
+        disabledSpecies: [],
       }
     }
     return {
@@ -92,6 +93,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
         equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
       },
       nutrientProfile: 'standard' as const,
+      disabledSpecies: [],
     }
   }, [mp.sharedState, camera, selectedId])
 
