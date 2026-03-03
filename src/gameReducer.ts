@@ -318,6 +318,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         }
       })
 
+      // Cyanobacteria photosynthesis — occasionally emit a nutrient nearby
+      const photoNutrients: Nutrient[] = []
+      for (const b of updated) {
+        if (b.speciesId === 'cyanobacteria' && !toRemove.has(b.id) && Math.random() < 0.03) {
+          const angle = Math.random() * Math.PI * 2
+          photoNutrients.push({
+            id: `n${nutrientId++}`,
+            x: b.x + Math.cos(angle) * (b.radius + 3),
+            y: b.y + Math.sin(angle) * (b.radius + 3),
+            vx: Math.cos(angle) * 0.05,
+            vy: Math.sin(angle) * 0.05,
+            energy: 3 + Math.random() * 3,
+            radius: 2 + Math.random(),
+            color: 'oklch(0.78 0.14 170)', // cyan-green tint
+            age: 0,
+            maxAge: 400 + Math.floor(Math.random() * 200),
+          })
+        }
+      }
+
       // Collision detection & resolution — spatial grid accelerated
       const bacteriaGrid = new SpatialGrid<number>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
       for (let i = 0; i < updated.length; i++) {
@@ -529,6 +549,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const liveNutrients = [
         ...existingNutrients.filter(n => !absorbedNutrients.has(n.id)),
         ...newNutrients,
+        ...photoNutrients,
       ]
 
       // Update existing antibiotics (drift, aging) and let bacteria absorb them
