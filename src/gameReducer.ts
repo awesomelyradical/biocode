@@ -30,6 +30,7 @@ const WORLD_GRID_SIZE = WORLD_RADIUS * 2
 const BOND_STIFFNESS = 0.5     // spring constant k
 const BOND_DAMPING = 0.6       // velocity damping along bond axis
 const BOND_BREAK_STRETCH = 3.0 // break when stretched to 3× rest length
+const BOND_MAX_FORCE = 1.5     // clamp spring force to prevent violent oscillation
 const MAX_ABSORB_PER_TICK = 4  // max energy a cell can absorb per tick
 
 let nutrientId = 0
@@ -456,7 +457,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
         // Hooke's law on end-to-end distance: F = -k * (dist - restLength)
         const displacement = dist - bond.restLength
-        const forceMag = BOND_STIFFNESS * displacement
+        const rawForce = BOND_STIFFNESS * displacement
+        const forceMag = Math.max(-BOND_MAX_FORCE, Math.min(BOND_MAX_FORCE, rawForce))
         const nx = dx / dist
         const ny = dy / dist
 
