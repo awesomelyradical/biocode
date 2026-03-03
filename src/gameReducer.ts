@@ -21,6 +21,10 @@
 
 import type { GameState, GameAction, BacteriaState, TraitKey, BehaviorKey, Nutrient, StoreCategory } from './types'
 import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS, STORE_ITEMS, NUTRIENT_PROFILES } from './data'
+import { SpatialGrid } from './lib/spatialGrid'
+
+const GRID_CELL_SIZE = 150
+const WORLD_GRID_SIZE = WORLD_RADIUS * 2
 
 let nutrientId = 0
 
@@ -61,6 +65,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const { mouseX, mouseY } = action
       const newBacteria: BacteriaState[] = []
       const toRemove: Set<string> = new Set()
+
+      // Build spatial grids for O(1) proximity lookups
+      const nutrientGrid = new SpatialGrid<Nutrient>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
+      for (const n of state.nutrients) nutrientGrid.insert(n.x, n.y, n)
+
+      const bacteriaGridPrev = new SpatialGrid<BacteriaState>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
+      for (const b of state.bacteria) bacteriaGridPrev.insert(b.x, b.y, b)
 
       const updated = state.bacteria.map(b => {
         const sp = species.find(s => s.id === b.speciesId)!
@@ -118,24 +129,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           }
         }
 
-        // ── Nutrient attraction ──
-        for (const n of state.nutrients) {
+        // ── Nutrient attraction (spatial grid query) ──
+        const nearbyNutrients = nutrientGrid.query(b.x, b.y, effectiveSense)
+        for (let ni = 0; ni < nearbyNutrients.length; ni++) {
+          const n = nearbyNutrients[ni]!
           const ndx = n.x - b.x
           const ndy = n.y - b.y
-          const ndist = Math.sqrt(ndx * ndx + ndy * ndy)
-          if (ndist > effectiveSense || ndist < 1) continue
+          const ndist2 = ndx * ndx + ndy * ndy
+          if (ndist2 > effectiveSense * effectiveSense || ndist2 < 1) continue
+          const ndist = Math.sqrt(ndist2)
           const strength = 0.05 * effectiveSpeed * (1 - ndist / effectiveSense)
           nvx += (ndx / ndist) * strength
           nvy += (ndy / ndist) * strength
         }
 
-        // ── Species affinity forces ──
-        for (const other of state.bacteria) {
+        // ── Species affinity forces (spatial grid query on previous frame) ──
+        const nearbyBacteria = bacteriaGridPrev.query(b.x, b.y, effectiveSense)
+        for (let bi = 0; bi < nearbyBacteria.length; bi++) {
+          const other = nearbyBacteria[bi]!
           if (other.id === b.id) continue
           const adx = other.x - b.x
           const ady = other.y - b.y
-          const adist = Math.sqrt(adx * adx + ady * ady)
-          if (adist > effectiveSense || adist < 1) continue
+          const adist2 = adx * adx + ady * ady
+          if (adist2 > effectiveSense * effectiveSense || adist2 < 1) continue
+          const adist = Math.sqrt(adist2)
 
           const sameSpecies = other.speciesId === b.speciesId
           const affinity = sameSpecies ? b.behavior.kinAffinity : b.behavior.xenoAffinity
@@ -219,7 +236,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const reproThreshold = sp.baseReproductionRate * b.properties.reproductionRate * (1 + lfMod * 0.5) * sizePressure * (b.antibioticBoost ? 0.5 : 1)
         // Must be large enough that halving still leaves >= 0.5 base size
         const canSplit = b.properties.size >= 1.0
-        if (canSplit && newEnergy > reproThreshold && state.bacteria.length + newBacteria.length < 200) {
+        if (canSplit && newEnergy > reproThreshold && state.bacteria.length + newBacteria.length < 1000) {
           const childAngle = Math.random() * Math.PI * 2
           const offset = effectiveRadius * 2.5
           const child = createBacteria(
@@ -296,19 +313,33 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         }
       })
 
-      // Collision detection & resolution (circle-circle) + eating
+      // Collision detection & resolution — spatial grid accelerated
+      const bacteriaGrid = new SpatialGrid<number>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
       for (let i = 0; i < updated.length; i++) {
-        for (let j = i + 1; j < updated.length; j++) {
-          const a = updated[i]
-          const b = updated[j]
-          if (toRemove.has(a.id) || toRemove.has(b.id)) continue
+        const b = updated[i]!
+        bacteriaGrid.insert(b.x, b.y, i)
+      }
+
+      const nearbyBuf: number[] = []
+      for (let i = 0; i < updated.length; i++) {
+        const a = updated[i]!
+        if (toRemove.has(a.id)) continue
+        const queryRadius = a.radius + GRID_CELL_SIZE // generous enough to catch all neighbors
+        nearbyBuf.length = 0
+        bacteriaGrid.query(a.x, a.y, queryRadius, nearbyBuf)
+        for (let ni = 0; ni < nearbyBuf.length; ni++) {
+          const j = nearbyBuf[ni]!
+          if (j <= i) continue // avoid double-processing pairs
+          const b = updated[j]!
+          if (toRemove.has(b.id)) continue
 
           const dx = b.x - a.x
           const dy = b.y - a.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
+          const dist2 = dx * dx + dy * dy
           const minDist = a.radius + b.radius
 
-          if (dist < minDist && dist > 0) {
+          if (dist2 < minDist * minDist && dist2 > 0) {
+            const dist = Math.sqrt(dist2)
             const spA = species.find(s => s.id === a.speciesId)!
             const spB = species.find(s => s.id === b.speciesId)!
             const mA = spA.baseMass * a.properties.size
@@ -316,18 +347,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const massSum = mA + mB
 
             // Eating: aggression lowers the mass ratio needed to eat
-            const eatThresholdA = 2.0 - a.behavior.aggression * 0.8 // 2.0 at 0 aggression, 1.2 at max
+            const eatThresholdA = 2.0 - a.behavior.aggression * 0.8
             const eatThresholdB = 2.0 - b.behavior.aggression * 0.8
             const massRatio = mA / mB
             if (massRatio > eatThresholdA && a.radius > b.radius * 1.3) {
-              // A eats B
               toRemove.add(b.id)
               a.energy = Math.min(100, a.energy + 15)
-              // Gene transfer: chance based on eater's permeability
               if (Math.random() < a.behavior.permeability && b.plasmid) {
                 const dominantTrait = TRAIT_KEYS.reduce((best, k) =>
                   b.plasmid.traits[k] > b.plasmid.traits[best] ? k : best, TRAIT_KEYS[0])
-                const gain = 2 + Math.random() * 3 // 2–5 bonus points
+                const gain = 2 + Math.random() * 3
                 a.plasmid = {
                   capacity: a.plasmid.capacity + gain,
                   traits: { ...a.plasmid.traits, [dominantTrait]: a.plasmid.traits[dominantTrait] + gain },
@@ -337,7 +366,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               }
               continue
             } else if (1 / massRatio > eatThresholdB && b.radius > a.radius * 1.3) {
-              // B eats A
               toRemove.add(a.id)
               b.energy = Math.min(100, b.energy + 15)
               if (Math.random() < b.behavior.permeability && a.plasmid) {
@@ -355,7 +383,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             }
 
             // Normal elastic collision
-            // Separate
             const overlap = minDist - dist
             const nx = dx / dist
             const ny = dy / dist
@@ -364,7 +391,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             b.x += nx * overlap * (mA / massSum)
             b.y += ny * overlap * (mA / massSum)
 
-            // Impulse
             const dvx = b.vx - a.vx
             const dvy = b.vy - a.vy
             const relVel = dvx * nx + dvy * ny
@@ -442,18 +468,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       // Update existing nutrients (drift, friction, aging) and let bacteria absorb them
+      // Build a spatial grid of living bacteria for absorption lookups
+      const aliveGrid = new SpatialGrid<BacteriaState>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
+      for (const b of alive) aliveGrid.insert(b.x, b.y, b)
+
       const absorbedNutrients = new Set<string>()
+      const absorptionBuf: BacteriaState[] = []
       const existingNutrients = state.nutrients.map(n => {
         if (n.age >= n.maxAge) {
           absorbedNutrients.add(n.id)
           return n
         }
-        // Check if any live bacterium is close enough to absorb
-        for (const b of alive) {
+        // Check nearby bacteria via spatial grid
+        absorptionBuf.length = 0
+        aliveGrid.query(n.x, n.y, GRID_CELL_SIZE, absorptionBuf)
+        for (let bi = 0; bi < absorptionBuf.length; bi++) {
+          const b = absorptionBuf[bi]!
           const dx = b.x - n.x
           const dy = b.y - n.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < b.radius + n.radius + 2) {
+          const dist2 = dx * dx + dy * dy
+          const thresh = b.radius + n.radius + 2
+          if (dist2 < thresh * thresh) {
             b.energy = Math.min(100, b.energy + n.energy)
             // Grow size trait from feeding — increase capacity so other traits stay unchanged
             const maxSizeTrait = BASE_TRAIT_POINTS * 3
@@ -490,17 +525,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Update existing antibiotics (drift, aging) and let bacteria absorb them
       const absorbedAntibiotics = new Set<string>()
+      const abBuf: BacteriaState[] = []
       const existingAntibiotics = state.antibiotics.map(ab => {
         if (ab.age >= ab.maxAge) {
           absorbedAntibiotics.add(ab.id)
           return ab
         }
-        for (const b of alive) {
+        abBuf.length = 0
+        aliveGrid.query(ab.x, ab.y, GRID_CELL_SIZE, abBuf)
+        for (let bi = 0; bi < abBuf.length; bi++) {
+          const b = abBuf[bi]!
           if (toRemove.has(b.id)) continue
           const dx = b.x - ab.x
           const dy = b.y - ab.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < b.radius + ab.radius + 2) {
+          const dist2 = dx * dx + dy * dy
+          const thresh = b.radius + ab.radius + 2
+          if (dist2 < thresh * thresh) {
             absorbedAntibiotics.add(ab.id)
             // Shrink the bacterium
             const sp = species.find(s => s.id === b.speciesId)!
