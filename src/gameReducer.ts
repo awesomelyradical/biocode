@@ -284,7 +284,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             radius: sp.baseSize * parentProps.size,
             age: b.age + 1,
             energy: newEnergy - 40,
-            angle: Math.atan2(nvy, nvx),
+            angle: b.speciesId === 'cyanobacteria'
+              ? b.angle + ((Math.atan2(nvy, nvx) - b.angle + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.02
+              : Math.atan2(nvy, nvx),
             flagellaPhase: b.flagellaPhase + 0.15,
             splitPhase: 1,
           }
@@ -307,7 +309,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           radius: sp.baseSize * b.properties.size,
           age: b.age + 1,
           energy: newEnergy,
-          angle: Math.atan2(nvy, nvx),
+          angle: b.speciesId === 'cyanobacteria'
+            ? b.angle + ((Math.atan2(nvy, nvx) - b.angle + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.02
+            : Math.atan2(nvy, nvx),
           flagellaPhase: b.flagellaPhase + 0.15,
           splitPhase: b.splitPhase ? Math.max(0, b.splitPhase - 0.06) : undefined,
           antibioticBoost: b.antibioticBoost ? b.antibioticBoost - 1 : undefined,
