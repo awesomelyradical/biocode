@@ -237,7 +237,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         // Must be large enough that halving still leaves >= 0.5 base size
         const canSplit = b.properties.size >= 1.0
         if (canSplit && newEnergy > reproThreshold && state.bacteria.length + newBacteria.length < 1000) {
-          const childAngle = Math.random() * Math.PI * 2
+          // Cyanobacteria divide along their facing axis; others use random angle
+          const childAngle = b.speciesId === 'cyanobacteria' ? b.angle : Math.random() * Math.PI * 2
           const offset = effectiveRadius * 2.5
           const child = createBacteria(
             b.speciesId,
@@ -347,8 +348,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const massSum = mA + mB
 
             // Eating: aggression lowers the mass ratio needed to eat
-            const eatThresholdA = 2.0 - a.behavior.aggression * 0.8
-            const eatThresholdB = 2.0 - b.behavior.aggression * 0.8
+            // Cyanobacteria are highly resistant — require 3× the normal mass ratio to eat them
+            const cyanoResistA = b.speciesId === 'cyanobacteria' ? 3 : 1
+            const cyanoResistB = a.speciesId === 'cyanobacteria' ? 3 : 1
+            const eatThresholdA = (2.0 - a.behavior.aggression * 0.8) * cyanoResistA
+            const eatThresholdB = (2.0 - b.behavior.aggression * 0.8) * cyanoResistB
             const massRatio = mA / mB
             if (massRatio > eatThresholdA && a.radius > b.radius * 1.3) {
               toRemove.add(b.id)

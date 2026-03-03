@@ -97,7 +97,18 @@ function drawBacterium(
 
   // Outer membrane
   ctx.beginPath()
-  if (sp.shape === 'rod') {
+  if (sp.shape === 'capsule') {
+    // Capsule: rounded rectangle (pill shape)
+    const hw = r * 1.6
+    const hh = r * 0.7
+    const cr = hh // cap radius = half height for full rounding
+    ctx.moveTo(-hw + cr, -hh)
+    ctx.lineTo(hw - cr, -hh)
+    ctx.arc(hw - cr, 0, hh, -Math.PI / 2, Math.PI / 2)
+    ctx.lineTo(-hw + cr, hh)
+    ctx.arc(-hw + cr, 0, hh, Math.PI / 2, -Math.PI / 2)
+    ctx.closePath()
+  } else if (sp.shape === 'rod') {
     const hw = r * 1.8
     const hh = r * 0.7
     ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2)
@@ -111,7 +122,17 @@ function drawBacterium(
 
   // Cell body
   ctx.beginPath()
-  if (sp.shape === 'rod') {
+  if (sp.shape === 'capsule') {
+    const hw = r * 1.4
+    const hh = r * 0.6
+    const cr = hh
+    ctx.moveTo(-hw + cr, -hh)
+    ctx.lineTo(hw - cr, -hh)
+    ctx.arc(hw - cr, 0, hh, -Math.PI / 2, Math.PI / 2)
+    ctx.lineTo(-hw + cr, hh)
+    ctx.arc(-hw + cr, 0, hh, Math.PI / 2, -Math.PI / 2)
+    ctx.closePath()
+  } else if (sp.shape === 'rod') {
     const hw = r * 1.6
     const hh = r * 0.6
     ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2)
@@ -134,7 +155,7 @@ function drawBacterium(
   ctx.fill()
 
   // Flagella (animated trailing lines)
-  const flagellaCount = sp.shape === 'rod' ? 1 : (sp.id === 'vibrio' ? 3 : 2)
+  const flagellaCount = sp.shape === 'capsule' ? 0 : sp.shape === 'rod' ? 1 : (sp.id === 'vibrio' ? 3 : 2)
   const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy)
   if (speed > 0.1) {
     ctx.strokeStyle = color.replace(')', ' / 0.4)').replace('oklch(', 'oklch(')

@@ -23,7 +23,7 @@ export interface Species {
   baseReproductionRate: number // energy cost to reproduce
   baseSenseRadius: number // how far it can "see" other bacteria
   baseMass: number        // collision mass
-  shape: 'circle' | 'ellipse' | 'rod' // visual shape
+  shape: 'circle' | 'ellipse' | 'rod' | 'capsule' // visual shape
   description: string
 }
 

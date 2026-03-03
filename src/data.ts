@@ -148,6 +148,21 @@ export const species: Species[] = [
     shape: 'circle',
     description: 'Tiny and extremely fast. Reproduce rapidly but fragile.',
   },
+  {
+    id: 'cyanobacteria',
+    name: 'Cyanobacteria',
+    color: 'oklch(0.70 0.16 195)',        // teal/cyan
+    membrane: 'oklch(0.80 0.10 195)',
+    baseSize: 14,
+    baseSpeed: 0.4,
+    baseFriction: 0.975,
+    baseRestitution: 0.5,
+    baseReproductionRate: 90,
+    baseSenseRadius: 70,
+    baseMass: 3,
+    shape: 'capsule',
+    description: 'Colonial filament-formers. Divide along one axis and stick together.',
+  },
 ]
 
 // ── Helpers ──
@@ -192,6 +207,16 @@ export function createBacteria(
     movementPattern: speciesId === 'spirillum' ? 'pattern-spiral'
       : speciesId === 'bacillus' ? 'pattern-zigzag'
       : undefined,
+    // Cyanobacteria override defaults: very sticky, strong kin affinity, low speed
+    ...(speciesId === 'cyanobacteria' ? {
+      behavior: {
+        ...createDefaultBehavior(),
+        kinAffinity: 0.9,
+        xenoAffinity: -0.3,
+        stickiness: 0.9,
+        aggression: 0.1,
+      },
+    } : {}),
   }
 }
 
