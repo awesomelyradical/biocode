@@ -12,7 +12,7 @@
  * - `ServerMessage`   — messages the server sends to (each) client.
  */
 
-import type { BacteriaState, Nutrient, Species, TraitKey, BehaviorKey } from '../types'
+import type { BacteriaState, Nutrient, Bond, Species, TraitKey, BehaviorKey } from '../types'
 
 /** The authoritative game state broadcast from the server at ~10 Hz. */
 
@@ -20,6 +20,7 @@ export interface SharedGameState {
   bacteria: BacteriaState[]
   nutrients: Nutrient[]
   antibiotics: Nutrient[]
+  bonds: Bond[]
   tick: number
   worldWidth: number
   worldHeight: number

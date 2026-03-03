@@ -84,6 +84,14 @@ export interface BacteriaState {
   movementPattern?: string // store pattern id (e.g. 'pattern-spiral')
   splitPhase?: number      // 1 = just split, decays to 0 (animation)
   antibioticBoost?: number // ticks remaining of reproduction boost from surviving antibiotic
+  initialAngle?: number    // locked orientation for filament-forming species (cyanobacteria)
+}
+
+/** Elastic bond between two cells (Hooke's law spring). */
+export interface Bond {
+  idA: string        // first cell id
+  idB: string        // second cell id
+  restLength: number // natural spring length (sum of radii at creation)
 }
 
 /** Viewport camera (world-space center + zoom level). */
@@ -173,6 +181,7 @@ export interface GameState {
   bacteria: BacteriaState[]
   nutrients: Nutrient[]
   antibiotics: Nutrient[]
+  bonds: Bond[]
   species: Species[]
   camera: CameraState
   selectedId: string | null

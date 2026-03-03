@@ -404,6 +404,23 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
 
       drawWorld(ctx, canvas.width, canvas.height, worldRadius)
 
+      // Draw elastic bonds between cyanobacteria
+      if (state.bonds.length > 0) {
+        const bMap = new Map<string, BacteriaState>()
+        for (const b of bacteria) bMap.set(b.id, b)
+        ctx.strokeStyle = 'oklch(0.75 0.12 195 / 0.5)'
+        ctx.lineWidth = 2
+        for (const bond of state.bonds) {
+          const a = bMap.get(bond.idA)
+          const b = bMap.get(bond.idB)
+          if (!a || !b) continue
+          ctx.beginPath()
+          ctx.moveTo(a.x, a.y)
+          ctx.lineTo(b.x, b.y)
+          ctx.stroke()
+        }
+      }
+
       // Draw bacteria (back to front, larger ones first for z-sorting)
       const sorted = [...bacteria].sort((a, b) => b.radius - a.radius)
       for (const b of sorted) {

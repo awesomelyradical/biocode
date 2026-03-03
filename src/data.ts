@@ -213,6 +213,7 @@ export function createBacteria(
     age: 0,
     energy: 50 + Math.random() * 30,
     angle,
+    initialAngle: speciesId === 'cyanobacteria' ? angle : undefined,
     flagellaPhase: Math.random() * Math.PI * 2,
     movementPattern: speciesId === 'spirillum' ? 'pattern-spiral'
       : speciesId === 'bacillus' ? 'pattern-zigzag'

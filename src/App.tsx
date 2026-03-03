@@ -34,6 +34,7 @@ const initialState: GameState = {
   bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
   nutrients: [],
   antibiotics: [],
+  bonds: [],
   species,
   camera: { x: WORLD_RADIUS, y: WORLD_RADIUS, zoom: 0.4 },
   selectedId: null,

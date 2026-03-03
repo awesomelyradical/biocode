@@ -19,12 +19,17 @@
  * manual reproduction, store purchases, and game restart.
  */
 
-import type { GameState, GameAction, BacteriaState, TraitKey, BehaviorKey, Nutrient, StoreCategory } from './types'
+import type { GameState, GameAction, BacteriaState, TraitKey, BehaviorKey, Nutrient, Bond, StoreCategory } from './types'
 import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS, STORE_ITEMS, NUTRIENT_PROFILES } from './data'
 import { SpatialGrid } from './lib/spatialGrid'
 
 const GRID_CELL_SIZE = 150
 const WORLD_GRID_SIZE = WORLD_RADIUS * 2
+
+// Hooke's law spring constants for cyanobacteria bonds
+const BOND_STIFFNESS = 0.15    // spring constant k
+const BOND_DAMPING = 0.3       // velocity damping along bond axis
+const BOND_BREAK_STRETCH = 3.0 // break when stretched to 3× rest length
 
 let nutrientId = 0
 
@@ -64,6 +69,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'TICK': {
       const { mouseX, mouseY } = action
       const newBacteria: BacteriaState[] = []
+      const newBonds: Bond[] = []
       const toRemove: Set<string> = new Set()
 
       // Build spatial grids for O(1) proximity lookups
@@ -246,6 +252,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             b.y + Math.sin(childAngle) * offset,
             state.species,
           )
+          // Cyanobacteria children inherit the parent's locked axis
+          if (b.initialAngle != null) {
+            child.angle = b.angle
+            child.initialAngle = b.initialAngle
+          }
           // Inherit parent plasmid with slight mutation
           const mutatedTraits = { ...b.plasmid.traits } as Record<TraitKey, number>
           for (const key of TRAIT_KEYS) {
@@ -268,6 +279,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           child.splitPhase = 1
           newBacteria.push(child)
 
+          // Create elastic bond between parent and child for cyanobacteria
+          if (b.speciesId === 'cyanobacteria') {
+            newBonds.push({
+              idA: b.id,
+              idB: child.id,
+              restLength: effectiveRadius + child.radius,
+            })
+          }
+
           // Halve parent's size trait too, floor at half base
           const parentTraits = { ...b.plasmid.traits }
           parentTraits.size = Math.max(minSizeTrait, parentTraits.size / 2)
@@ -284,8 +304,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             radius: sp.baseSize * parentProps.size,
             age: b.age + 1,
             energy: newEnergy - 40,
-            angle: b.speciesId === 'cyanobacteria'
-              ? b.angle + ((Math.atan2(nvy, nvx) - b.angle + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.02
+            angle: b.initialAngle != null
+              ? b.initialAngle + Math.max(-0.035, Math.min(0.035,
+                  ((b.angle - b.initialAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+                  + ((Math.atan2(nvy, nvx) - b.angle + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.02
+                ))
               : Math.atan2(nvy, nvx),
             flagellaPhase: b.flagellaPhase + 0.15,
             splitPhase: 1,
@@ -309,14 +332,83 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           radius: sp.baseSize * b.properties.size,
           age: b.age + 1,
           energy: newEnergy,
-          angle: b.speciesId === 'cyanobacteria'
-            ? b.angle + ((Math.atan2(nvy, nvx) - b.angle + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.02
+          angle: b.initialAngle != null
+            ? b.initialAngle + Math.max(-0.035, Math.min(0.035,
+                ((b.angle - b.initialAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+                + ((Math.atan2(nvy, nvx) - b.angle + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.02
+              ))
             : Math.atan2(nvy, nvx),
           flagellaPhase: b.flagellaPhase + 0.15,
           splitPhase: b.splitPhase ? Math.max(0, b.splitPhase - 0.06) : undefined,
           antibioticBoost: b.antibioticBoost ? b.antibioticBoost - 1 : undefined,
         }
       })
+
+      // ── Elastic bond forces (Hooke's law) ──
+      // Build index for O(1) lookups by id
+      const byId = new Map<string, BacteriaState>()
+      for (const b of updated) byId.set(b.id, b)
+
+      const brokenBonds = new Set<number>()
+      for (let bi = 0; bi < state.bonds.length; bi++) {
+        const bond = state.bonds[bi]!
+        const a = byId.get(bond.idA)
+        const b = byId.get(bond.idB)
+        if (!a || !b || toRemove.has(a.id) || toRemove.has(b.id)) {
+          brokenBonds.add(bi)
+          continue
+        }
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 0.001) continue
+
+        // Break if stretched too far
+        if (dist > bond.restLength * BOND_BREAK_STRETCH) {
+          brokenBonds.add(bi)
+          continue
+        }
+
+        // Hooke's law: F = -k * (dist - restLength)
+        const displacement = dist - bond.restLength
+        const forceMag = BOND_STIFFNESS * displacement
+        const nx = dx / dist
+        const ny = dy / dist
+
+        // Apply equal and opposite forces
+        a.vx += nx * forceMag
+        a.vy += ny * forceMag
+        b.vx -= nx * forceMag
+        b.vy -= ny * forceMag
+
+        // Damping: reduce relative velocity along bond axis
+        const dvx = b.vx - a.vx
+        const dvy = b.vy - a.vy
+        const relVelAlongBond = dvx * nx + dvy * ny
+        const dampForce = relVelAlongBond * BOND_DAMPING
+        a.vx += nx * dampForce
+        a.vy += ny * dampForce
+        b.vx -= nx * dampForce
+        b.vy -= ny * dampForce
+
+        // Also keep bonded cells aligned: gently torque toward bond axis
+        if (a.initialAngle != null) {
+          const bondAngle = Math.atan2(dy, dx)
+          // Snap initialAngle toward the bond's actual axis (very gently)
+          const diff = ((bondAngle - a.initialAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+          if (Math.abs(diff) > 0.035) {
+            // Only adjust if misaligned — nudge both ends
+            a.initialAngle = a.initialAngle + diff * 0.01
+            if (b.initialAngle != null) b.initialAngle = b.initialAngle + diff * 0.01
+          }
+        }
+      }
+
+      // Collect surviving bonds + new bonds from this tick
+      const survivingBonds: Bond[] = []
+      for (let bi = 0; bi < state.bonds.length; bi++) {
+        if (!brokenBonds.has(bi)) survivingBonds.push(state.bonds[bi]!)
+      }
 
       // Cyanobacteria photosynthesis — occasionally emit a nutrient nearby
       const photoNutrients: Nutrient[] = []
@@ -623,11 +715,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // Biomass accrual — earn based on living population
       const biomassGain = finalAlive.length * 0.02
 
+      // Final bond cleanup: remove any bonds referencing dead cells
+      const aliveIds = new Set(finalAlive.map(b => b.id))
+      for (const b of newBacteria) aliveIds.add(b.id)
+      const finalBonds = [...survivingBonds, ...newBonds].filter(
+        bond => aliveIds.has(bond.idA) && aliveIds.has(bond.idB)
+      )
+
       return {
         ...state,
         bacteria: [...finalAlive, ...newBacteria],
         nutrients: liveNutrients,
         antibiotics: liveAntibiotics,
+        bonds: finalBonds,
         tick: state.tick + 1,
         biomass: state.biomass + biomassGain,
         selectedId: toRemove.has(state.selectedId ?? '') ? null : state.selectedId,
@@ -791,6 +891,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
         nutrients: [],
         antibiotics: [],
+        bonds: [],
         selectedId: null,
         tick: 0,
         camera: { x: WORLD_RADIUS, y: WORLD_RADIUS, zoom: 0.4 },
