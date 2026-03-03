@@ -20,7 +20,7 @@
  */
 
 import type { GameState, GameAction, BacteriaState, TraitKey, BehaviorKey, Nutrient, Bond, StoreCategory } from './types'
-import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS, STORE_ITEMS, NUTRIENT_PROFILES } from './data'
+import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, BEHAVIOR_KEYS, BEHAVIOR_CONFIGS, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS, STORE_ITEMS, NUTRIENT_PROFILES } from './data'
 import { SpatialGrid } from './lib/spatialGrid'
 
 const GRID_CELL_SIZE = 150
@@ -345,7 +345,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           }
           child.plasmid = childPlasmid
           child.properties = childProps
-          child.behavior = { ...b.behavior }
+          // Mutate behavior sliders — 20% chance per slider to shift slightly
+          const childBehavior = { ...b.behavior }
+          for (const bk of BEHAVIOR_KEYS) {
+            if (Math.random() < 0.2) {
+              const cfg = BEHAVIOR_CONFIGS[bk]
+              const shift = (Math.random() - 0.5) * 0.2 // ±0.1 range
+              childBehavior[bk] = Math.max(cfg.min, Math.min(cfg.max, childBehavior[bk] + shift))
+            }
+          }
+          child.behavior = childBehavior
           child.radius = childRadius
           child.energy = 30
           child.splitPhase = 1
