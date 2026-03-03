@@ -630,6 +630,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               b.vy += (impulse / mB) * ny
             }
           }
+
+          // Lateral repulsion between cyanobacteria long sides
+          if (a.speciesId === 'cyanobacteria' && b.speciesId === 'cyanobacteria' && dist2 > 0) {
+            const lateralRange = (a.radius + b.radius) * 3
+            if (dist2 < lateralRange * lateralRange) {
+              const d = dist2 < minDist * minDist ? Math.sqrt(dist2) : (() => { const v = Math.sqrt(dist2); return v })()
+              const sepX = dx / d
+              const sepY = dy / d
+              // Axis of cell a (unit vector along its length)
+              const axAx = Math.cos(a.angle)
+              const axAy = Math.sin(a.angle)
+              // Project separation onto a's axis — high dot = end-to-end, low = side-by-side
+              const dotAxis = Math.abs(sepX * axAx + sepY * axAy)
+              // Lateral component: 1 when perfectly side-by-side, 0 when end-to-end
+              const lateralFactor = 1 - dotAxis
+              if (lateralFactor > 0.3) {
+                const strength = 0.04 * lateralFactor * (1 - d / lateralRange)
+                a.vx -= sepX * strength
+                a.vy -= sepY * strength
+                b.vx += sepX * strength
+                b.vy += sepY * strength
+              }
+            }
+          }
         }
       }
 
