@@ -217,6 +217,9 @@ function SplashScreen({ onPlay, onMultiplayer }: { onPlay: () => void; onMultipl
         <p className="mt-12 text-white/85 text-[12px] tracking-wide">
           Vibecoded together by Aric and Juniper
         </p>
+        <p className="mt-1 text-white/20 text-[10px] tracking-widest font-mono">
+          v0.1.0
+        </p>
       </div>
     </div>
   )
