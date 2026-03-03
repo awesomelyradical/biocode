@@ -11,8 +11,8 @@
  *   multiplayer info (room code + copy-invite, player count, leave)
  */
 
-import type { GameState, GameAction, NutrientProfileId } from '../types'
-import { species, NUTRIENT_PROFILES } from '../data'
+import type { GameState, GameAction } from '../types'
+import { species } from '../data'
 
 interface HUDProps {
   state: GameState
@@ -39,24 +39,40 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
   return (
     <>
       {/* Population panel — top left */}
-      <div className="absolute top-3 left-3 z-30 bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-2 pointer-events-none">
-        <div className="text-xs font-semibold text-primary mb-1">Population ({state.bacteria.length})</div>
-        <div className="flex flex-col gap-0.5">
-          {species.map(sp => {
-            const count = counts.get(sp.id) || 0
-            if (count === 0) return null
-            return (
-              <div key={sp.id} className="flex items-center gap-2 text-xs">
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: sp.color }}
-                />
-                <span className="text-foreground/80 font-medium w-20">{sp.name}</span>
-                <span className="text-muted-foreground font-mono">{count}</span>
-              </div>
-            )
-          })}
+      <div className="absolute top-3 left-3 z-30 pointer-events-none">
+        <div className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-3 mb-1">
+            <span className="text-xs font-semibold text-primary">Population ({state.bacteria.length})</span>
+            <div className="flex items-center gap-1 bg-primary/10 rounded-full px-2 py-0.5">
+              <span className="text-[10px]">🧫</span>
+              <span className="text-[11px] font-bold text-primary font-mono">{Math.floor(state.biomass)}</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {species.map(sp => {
+              const count = counts.get(sp.id) || 0
+              if (count === 0) return null
+              return (
+                <div key={sp.id} className="flex items-center gap-2 text-xs">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: sp.color }}
+                  />
+                  <span className="text-foreground/80 font-medium w-20">{sp.name}</span>
+                  <span className="text-muted-foreground font-mono">{count}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
+        {!multiplayerInfo && (
+          <button
+            onClick={onOpenStore}
+            className="pointer-events-auto mt-1.5 w-full bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <span>🧬</span> Store
+          </button>
+        )}
       </div>
 
       {/* Zoom indicator — top right */}
@@ -130,25 +146,6 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
           </>
         ) : (
           <>
-            <div className="flex items-center gap-1.5 bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 pointer-events-none">
-              <span className="text-sm">🧫</span>
-              <span className="text-xs font-bold text-primary font-mono">{Math.floor(state.biomass)}</span>
-            </div>
-            <select
-              value={state.nutrientProfile}
-              onChange={e => dispatch({ type: 'SET_NUTRIENT_PROFILE', profile: e.target.value as NutrientProfileId })}
-              className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-2 py-1.5 text-xs text-primary cursor-pointer outline-none hover:bg-primary/10 transition-colors"
-            >
-              {NUTRIENT_PROFILES.map(p => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-            <button
-              onClick={onOpenStore}
-              className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <span>🧬</span> Store
-            </button>
             <button
               onClick={() => dispatch({ type: 'RESTART' })}
               className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer"
