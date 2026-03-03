@@ -548,6 +548,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       // Collision detection & resolution — spatial grid accelerated
+      // Build set of bonded pairs to exempt from collision
+      const bondedPairs = new Set<string>()
+      for (const bond of [...survivingBonds, ...newBonds]) {
+        bondedPairs.add(`${bond.idA}:${bond.idB}`)
+        bondedPairs.add(`${bond.idB}:${bond.idA}`)
+      }
+
       const bacteriaGrid = new SpatialGrid<number>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
       for (let i = 0; i < updated.length; i++) {
         const b = updated[i]!
@@ -566,6 +573,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           if (j <= i) continue // avoid double-processing pairs
           const b = updated[j]!
           if (toRemove.has(b.id)) continue
+
+          // Skip collision between bonded cells — bond physics handles their spacing
+          if (bondedPairs.has(`${a.id}:${b.id}`)) continue
 
           const dx = b.x - a.x
           const dy = b.y - a.y
