@@ -574,8 +574,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           const b = updated[j]!
           if (toRemove.has(b.id)) continue
 
-          // Skip collision between bonded cells — bond physics handles their spacing
-          if (bondedPairs.has(`${a.id}:${b.id}`)) continue
+          // Bonded cells get inelastic sticky collision — resolve overlap but kill bounce
+          const isBonded = bondedPairs.has(`${a.id}:${b.id}`)
 
           const dx = b.x - a.x
           const dy = b.y - a.y
@@ -589,6 +589,29 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             const mA = spA.baseMass * a.properties.size
             const mB = spB.baseMass * b.properties.size
             const massSum = mA + mB
+
+            if (isBonded) {
+              // Inelastic sticky collision — gently resolve overlap, kill relative velocity
+              const overlap = minDist - dist
+              const nx = dx / dist
+              const ny = dy / dist
+              // Push apart just enough to resolve overlap (half each)
+              a.x -= nx * overlap * 0.5
+              a.y -= ny * overlap * 0.5
+              b.x += nx * overlap * 0.5
+              b.y += ny * overlap * 0.5
+              // Average velocities along collision normal (perfectly inelastic)
+              const dvx = b.vx - a.vx
+              const dvy = b.vy - a.vy
+              const relVel = dvx * nx + dvy * ny
+              if (relVel < 0) {
+                const impulse = -relVel / (1 / mA + 1 / mB)
+                a.vx -= (impulse / mA) * nx
+                a.vy -= (impulse / mA) * ny
+                b.vx += (impulse / mB) * nx
+                b.vy += (impulse / mB) * ny
+              }
+            } else {
 
             // Eating: aggression lowers the mass ratio needed to eat
             // Cyanobacteria are highly resistant — require 3× the normal mass ratio to eat them
@@ -654,6 +677,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               b.vx += (impulse / mB) * nx
               b.vy += (impulse / mB) * ny
             }
+            } // close else (non-bonded)
           }
 
           // Lateral repulsion between cyanobacteria long sides
