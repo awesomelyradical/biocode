@@ -79,15 +79,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const bacteriaGridPrev = new SpatialGrid<BacteriaState>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
       for (const b of state.bacteria) bacteriaGridPrev.insert(b.x, b.y, b)
 
-      // Pre-compute mature cyanobacteria from previous frame's bonds (for nutrient attraction skip)
-      const prevBondCount = new Map<string, number>()
+      // Track which ends are occupied from previous frame's bonds
+      // Key: "cellId:head" or "cellId:tail"
+      const prevOccupiedEnds = new Set<string>()
       for (const bond of state.bonds) {
-        prevBondCount.set(bond.idA, (prevBondCount.get(bond.idA) ?? 0) + 1)
-        prevBondCount.set(bond.idB, (prevBondCount.get(bond.idB) ?? 0) + 1)
+        prevOccupiedEnds.add(`${bond.idA}:${bond.endA}`)
+        prevOccupiedEnds.add(`${bond.idB}:${bond.endB}`)
       }
       const prevMatureCyano = new Set<string>()
       for (const b of state.bacteria) {
-        if (b.speciesId === 'cyanobacteria' && (prevBondCount.get(b.id) ?? 0) >= 2) {
+        if (b.speciesId === 'cyanobacteria'
+          && prevOccupiedEnds.has(`${b.id}:head`)
+          && prevOccupiedEnds.has(`${b.id}:tail`)) {
           prevMatureCyano.add(b.id)
         }
       }
@@ -259,8 +262,47 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         // Must be large enough that halving still leaves >= 0.5 base size
         const canSplit = b.properties.size >= 1.0
         if (canSplit && newEnergy > reproThreshold && state.bacteria.length + newBacteria.length < 1000) {
-          // Cyanobacteria divide along their facing axis; others use random angle
-          const childAngle = b.speciesId === 'cyanobacteria' ? b.angle : Math.random() * Math.PI * 2
+          // Cyanobacteria divide along their facing axis from a free end; others use random angle
+          let childAngle = Math.random() * Math.PI * 2
+          let parentEnd: 'head' | 'tail' = 'head'
+          let childEnd: 'head' | 'tail' = 'tail'
+          if (b.speciesId === 'cyanobacteria') {
+            // Pick a free end — head first, then tail, skip if both occupied
+            const headFree = !prevOccupiedEnds.has(`${b.id}:head`)
+              && !newBonds.some(bd => (bd.idA === b.id && bd.endA === 'head') || (bd.idB === b.id && bd.endB === 'head'))
+            const tailFree = !prevOccupiedEnds.has(`${b.id}:tail`)
+              && !newBonds.some(bd => (bd.idA === b.id && bd.endA === 'tail') || (bd.idB === b.id && bd.endB === 'tail'))
+            if (!headFree && !tailFree) {
+              // Both ends occupied — cannot divide, fall through to normal return
+            } else {
+              if (headFree) {
+                childAngle = b.angle           // divide forward from head
+                parentEnd = 'head'
+                childEnd = 'tail'              // child's tail faces parent's head
+              } else {
+                childAngle = b.angle + Math.PI // divide backward from tail
+                parentEnd = 'tail'
+                childEnd = 'head'              // child's head faces parent's tail
+              }
+            }
+            if (!headFree && !tailFree) {
+              // Skip division entirely for fully bonded cyanobacteria
+              return {
+                ...b,
+                x: nx, y: ny, vx: nvx, vy: nvy,
+                radius: sp.baseSize * b.properties.size,
+                age: b.age + 1,
+                energy: newEnergy,
+                angle: b.initialAngle != null
+                  ? b.initialAngle + Math.max(-0.035, Math.min(0.035,
+                      ((b.angle - b.initialAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+                      + ((Math.atan2(nvy, nvx) - b.angle + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.02
+                    ))
+                  : Math.atan2(nvy, nvx),
+                flagellaPhase: b.flagellaPhase + 0.15,
+              }
+            }
+          }
           const offset = effectiveRadius * 2.5
           const child = createBacteria(
             b.speciesId,
@@ -295,12 +337,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           child.splitPhase = 1
           newBacteria.push(child)
 
-          // Create elastic bond between parent and child for cyanobacteria
+          // Create elastic bond between parent and child for cyanobacteria (end-to-end)
           if (b.speciesId === 'cyanobacteria') {
             newBonds.push({
               idA: b.id,
               idB: child.id,
-              restLength: effectiveRadius + child.radius,
+              endA: parentEnd,
+              endB: childEnd,
+              restLength: 2, // small gap between touching ends
             })
           }
 
@@ -374,24 +418,36 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           brokenBonds.add(bi)
           continue
         }
-        const dx = b.x - a.x
-        const dy = b.y - a.y
+
+        // Compute end-point positions (head = forward along angle, tail = backward)
+        const endASign = bond.endA === 'head' ? 1 : -1
+        const endBSign = bond.endB === 'head' ? 1 : -1
+        const axA = a.x + Math.cos(a.angle) * a.radius * endASign
+        const ayA = a.y + Math.sin(a.angle) * a.radius * endASign
+        const bxB = b.x + Math.cos(b.angle) * b.radius * endBSign
+        const byB = b.y + Math.sin(b.angle) * b.radius * endBSign
+
+        const dx = bxB - axA
+        const dy = byB - ayA
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < 0.001) continue
 
-        // Break if stretched too far
-        if (dist > bond.restLength * BOND_BREAK_STRETCH) {
+        // Break if stretched too far (use center-to-center for break check)
+        const cdx = b.x - a.x
+        const cdy = b.y - a.y
+        const centerDist = Math.sqrt(cdx * cdx + cdy * cdy)
+        if (centerDist > (a.radius + b.radius + bond.restLength) * BOND_BREAK_STRETCH) {
           brokenBonds.add(bi)
           continue
         }
 
-        // Hooke's law: F = -k * (dist - restLength)
+        // Hooke's law on end-to-end distance: F = -k * (dist - restLength)
         const displacement = dist - bond.restLength
         const forceMag = BOND_STIFFNESS * displacement
         const nx = dx / dist
         const ny = dy / dist
 
-        // Apply equal and opposite forces
+        // Apply equal and opposite forces to cell centers
         a.vx += nx * forceMag
         a.vy += ny * forceMag
         b.vx -= nx * forceMag
@@ -407,15 +463,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         b.vx -= nx * dampForce
         b.vy -= ny * dampForce
 
-        // Also keep bonded cells aligned: gently torque toward bond axis
+        // Torque: align cell axes so bonded ends point toward each other
         if (a.initialAngle != null) {
+          // The bond axis from a's end toward b's end
           const bondAngle = Math.atan2(dy, dx)
-          // Snap initialAngle toward the bond's actual axis (very gently)
-          const diff = ((bondAngle - a.initialAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI)
-          if (Math.abs(diff) > 0.035) {
-            // Only adjust if misaligned — nudge both ends
-            a.initialAngle = a.initialAngle + diff * 0.01
-            if (b.initialAngle != null) b.initialAngle = b.initialAngle + diff * 0.01
+          // a's bonded end should point toward b — expected angle depends on which end
+          const targetA = bond.endA === 'head' ? bondAngle : bondAngle + Math.PI
+          const diffA = ((targetA - a.initialAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+          if (Math.abs(diffA) > 0.035) {
+            a.initialAngle = a.initialAngle + diffA * 0.01
+          }
+          if (b.initialAngle != null) {
+            const targetB = bond.endB === 'head' ? bondAngle + Math.PI : bondAngle
+            const diffB = ((targetB - b.initialAngle + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+            if (Math.abs(diffB) > 0.035) {
+              b.initialAngle = b.initialAngle + diffB * 0.01
+            }
           }
         }
       }
@@ -426,22 +489,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (!brokenBonds.has(bi)) survivingBonds.push(state.bonds[bi]!)
       }
 
-      // Count bonds per cell — cyanobacteria with 2+ bonds are "mature" (interior cells)
-      const bondCount = new Map<string, number>()
+      // Track occupied ends from current frame's bonds — mature = both ends bonded
+      const occupiedEnds = new Set<string>()
       for (const bond of survivingBonds) {
-        bondCount.set(bond.idA, (bondCount.get(bond.idA) ?? 0) + 1)
-        bondCount.set(bond.idB, (bondCount.get(bond.idB) ?? 0) + 1)
+        occupiedEnds.add(`${bond.idA}:${bond.endA}`)
+        occupiedEnds.add(`${bond.idB}:${bond.endB}`)
       }
-      // Also count new bonds from this tick's divisions
       for (const bond of newBonds) {
-        bondCount.set(bond.idA, (bondCount.get(bond.idA) ?? 0) + 1)
-        bondCount.set(bond.idB, (bondCount.get(bond.idB) ?? 0) + 1)
+        occupiedEnds.add(`${bond.idA}:${bond.endA}`)
+        occupiedEnds.add(`${bond.idB}:${bond.endB}`)
       }
       const matureCyano = new Set<string>()
-      for (const [id, count] of bondCount) {
-        if (count >= 2) {
-          const b = byId.get(id)
-          if (b && b.speciesId === 'cyanobacteria') matureCyano.add(id)
+      for (const b of updated) {
+        if (b.speciesId === 'cyanobacteria'
+          && occupiedEnds.has(`${b.id}:head`)
+          && occupiedEnds.has(`${b.id}:tail`)) {
+          matureCyano.add(b.id)
         }
       }
 

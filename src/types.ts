@@ -87,11 +87,16 @@ export interface BacteriaState {
   initialAngle?: number    // locked orientation for filament-forming species (cyanobacteria)
 }
 
+/** Which end of a capsule cell a bond attaches to. */
+export type BondEnd = 'head' | 'tail'
+
 /** Elastic bond between two cells (Hooke's law spring). */
 export interface Bond {
   idA: string        // first cell id
   idB: string        // second cell id
-  restLength: number // natural spring length (sum of radii at creation)
+  endA: BondEnd      // which end of cell A
+  endB: BondEnd      // which end of cell B
+  restLength: number // natural spring length (end-to-end gap)
 }
 
 /** Viewport camera (world-space center + zoom level). */
