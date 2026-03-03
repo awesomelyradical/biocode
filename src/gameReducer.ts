@@ -468,6 +468,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         b.vx -= nx * forceMag
         b.vy -= ny * forceMag
 
+        // Positional correction: directly close a fraction of the gap each tick
+        // This prevents slow drift when force clamp limits spring recovery
+        if (Math.abs(displacement) > 0.5) {
+          const correction = displacement * 0.3 // close 30% of the gap per tick
+          a.x += nx * correction * 0.5
+          a.y += ny * correction * 0.5
+          b.x -= nx * correction * 0.5
+          b.y -= ny * correction * 0.5
+        }
+
         // Damping: reduce relative velocity along bond axis
         const dvx = b.vx - a.vx
         const dvy = b.vy - a.vy
