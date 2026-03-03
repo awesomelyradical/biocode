@@ -30,6 +30,7 @@ const WORLD_GRID_SIZE = WORLD_RADIUS * 2
 const BOND_STIFFNESS = 0.15    // spring constant k
 const BOND_DAMPING = 0.3       // velocity damping along bond axis
 const BOND_BREAK_STRETCH = 3.0 // break when stretched to 3× rest length
+const MAX_ABSORB_PER_TICK = 8  // max energy a cell can absorb per tick
 
 let nutrientId = 0
 
@@ -695,6 +696,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       for (const b of alive) aliveGrid.insert(b.x, b.y, b)
 
       const absorbedNutrients = new Set<string>()
+      const absorbedThisTick = new Map<string, number>() // energy absorbed per cell this tick
       const absorptionBuf: BacteriaState[] = []
       const existingNutrients = state.nutrients.map(n => {
         if (n.age >= n.maxAge) {
@@ -708,15 +710,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           const b = absorptionBuf[bi]!
           // Mature cyanobacteria (2+ bonds) don't absorb nutrients
           if (matureCyano.has(b.id)) continue
+          // Skip if this cell already hit its absorption cap this tick
+          const alreadyAbsorbed = absorbedThisTick.get(b.id) ?? 0
+          if (alreadyAbsorbed >= MAX_ABSORB_PER_TICK) continue
           const dx = b.x - n.x
           const dy = b.y - n.y
           const dist2 = dx * dx + dy * dy
           const thresh = b.radius + n.radius + 2
           if (dist2 < thresh * thresh) {
-            b.energy = Math.min(100, b.energy + n.energy)
+            const room = MAX_ABSORB_PER_TICK - alreadyAbsorbed
+            const absorbed = Math.min(n.energy, room)
+            b.energy = Math.min(100, b.energy + absorbed)
+            absorbedThisTick.set(b.id, alreadyAbsorbed + absorbed)
             // Grow size trait from feeding — increase capacity so other traits stay unchanged
             const maxSizeTrait = BASE_TRAIT_POINTS * 3
-            const sizeGrowth = n.energy * 0.06
+            const sizeGrowth = absorbed * 0.06
             const oldSize = b.plasmid.traits.size
             const newSizeTrait = Math.min(maxSizeTrait, oldSize + sizeGrowth)
             const actualGrowth = newSizeTrait - oldSize
