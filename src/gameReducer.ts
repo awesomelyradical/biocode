@@ -580,12 +580,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
             // Eating: aggression lowers the mass ratio needed to eat
             // Cyanobacteria are highly resistant — require 3× the normal mass ratio to eat them
+            // Cyanobacteria are harmless — they never eat other species
             const cyanoResistA = b.speciesId === 'cyanobacteria' ? 3 : 1
             const cyanoResistB = a.speciesId === 'cyanobacteria' ? 3 : 1
             const eatThresholdA = (2.0 - a.behavior.aggression * 0.8) * cyanoResistA
             const eatThresholdB = (2.0 - b.behavior.aggression * 0.8) * cyanoResistB
             const massRatio = mA / mB
-            if (massRatio > eatThresholdA && a.radius > b.radius * 1.3) {
+            if (a.speciesId !== 'cyanobacteria' && massRatio > eatThresholdA && a.radius > b.radius * 1.3) {
               toRemove.add(b.id)
               a.energy = Math.min(100, a.energy + 15)
               if (Math.random() < a.behavior.permeability && b.plasmid) {
@@ -600,7 +601,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 a.radius = spA.baseSize * a.properties.size
               }
               continue
-            } else if (1 / massRatio > eatThresholdB && b.radius > a.radius * 1.3) {
+            } else if (b.speciesId !== 'cyanobacteria' && 1 / massRatio > eatThresholdB && b.radius > a.radius * 1.3) {
               toRemove.add(a.id)
               b.energy = Math.min(100, b.energy + 15)
               if (Math.random() < b.behavior.permeability && a.plasmid) {
