@@ -145,6 +145,7 @@ export type GameAction =
   | { type: 'SPAWN'; bacteria: BacteriaState }
   | { type: 'REMOVE'; id: string }
   | { type: 'SELECT'; id: string | null }
+  | { type: 'APPLY_COSMETICS'; id: string }
   | { type: 'ADJUST_TRAIT'; id: string; trait: TraitKey; delta: number }
   | { type: 'SET_BEHAVIOR'; id: string; key: BehaviorKey; value: number }
   | { type: 'SET_CAMERA'; camera: Partial<CameraState> }

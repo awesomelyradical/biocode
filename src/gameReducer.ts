@@ -665,6 +665,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, selectedId: action.id }
     }
 
+    case 'APPLY_COSMETICS': {
+      // Apply equipped cosmetics without changing selection
+      const equippedColorId = state.store.equipped.colors
+      const equippedPatternId = state.store.equipped.patterns
+      if (!equippedColorId && !equippedPatternId) return state
+      const colorItem = equippedColorId ? STORE_ITEMS.find(i => i.id === equippedColorId) : null
+      return {
+        ...state,
+        bacteria: state.bacteria.map(b => {
+          if (b.id !== action.id) return b
+          const updates: Partial<BacteriaState> = {}
+          if (colorItem?.preview) updates.membraneColor = colorItem.preview
+          if (equippedPatternId) updates.movementPattern = equippedPatternId
+          return { ...b, ...updates }
+        }),
+      }
+    }
+
     case 'ADJUST_TRAIT': {
       return {
         ...state,

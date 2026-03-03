@@ -642,7 +642,26 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
-      // Middle click or shift+click = pan
+      // Shift+click on a bacterium = apply cosmetics without selecting
+      if (e.button === 0 && e.shiftKey) {
+        const canvas = canvasRef.current
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect()
+          const screenX = (e.clientX - rect.left) * devicePixelRatio
+          const screenY = (e.clientY - rect.top) * devicePixelRatio
+          const world = screenToWorld(screenX, screenY, state.camera)
+          for (const b of state.bacteria) {
+            const dx = world.x - b.x
+            const dy = world.y - b.y
+            if (Math.sqrt(dx * dx + dy * dy) < b.radius) {
+              dispatch({ type: 'APPLY_COSMETICS', id: b.id })
+              e.preventDefault()
+              return // don't start panning
+            }
+          }
+        }
+      }
+      // Middle click or shift+click on empty space = pan
       isDraggingRef.current = true
       dragStartRef.current = {
         x: e.clientX,
@@ -652,7 +671,7 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
       }
       e.preventDefault()
     }
-  }, [state.camera])
+  }, [state.camera, state.bacteria, screenToWorld, dispatch])
 
   const handleMouseUp = useCallback(() => {
     isDraggingRef.current = false
