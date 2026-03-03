@@ -304,18 +304,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               }
             }
           }
-          const offset = effectiveRadius * 2.5
-          const child = createBacteria(
-            b.speciesId,
-            b.x + Math.cos(childAngle) * offset,
-            b.y + Math.sin(childAngle) * offset,
-            state.species,
-          )
-          // Cyanobacteria children inherit the parent's locked axis
-          if (b.initialAngle != null) {
-            child.angle = b.angle
-            child.initialAngle = b.initialAngle
-          }
           // Inherit parent plasmid with slight mutation
           const mutatedTraits = { ...b.plasmid.traits } as Record<TraitKey, number>
           for (const key of TRAIT_KEYS) {
@@ -330,10 +318,34 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           const minSizeTrait = BASE_TRAIT_POINTS * 0.5
           mutatedTraits.size = Math.max(minSizeTrait, mutatedTraits.size / 2)
           const childCapacity = TRAIT_KEYS.reduce((s, k) => s + mutatedTraits[k], 0)
-          child.plasmid = { capacity: childCapacity, traits: mutatedTraits }
-          child.properties = plasmidToProperties(child.plasmid, sp.color)
+          const childPlasmid = { capacity: childCapacity, traits: mutatedTraits }
+          const childProps = plasmidToProperties(childPlasmid, sp.color)
+          const childRadius = sp.baseSize * childProps.size
+
+          // Compute post-division parent radius for accurate placement
+          const parentPostTraits = { ...b.plasmid.traits }
+          parentPostTraits.size = Math.max(minSizeTrait, parentPostTraits.size / 2)
+          const parentPostProps = plasmidToProperties({ capacity: TRAIT_KEYS.reduce((s, k) => s + parentPostTraits[k], 0), traits: parentPostTraits }, sp.color)
+          const parentPostRadius = sp.baseSize * parentPostProps.size
+
+          // Spawn child so ends just touch (center-to-center = sum of radii + small gap)
+          const bondGap = 2
+          const offset = parentPostRadius + childRadius + bondGap
+          const child = createBacteria(
+            b.speciesId,
+            b.x + Math.cos(childAngle) * offset,
+            b.y + Math.sin(childAngle) * offset,
+            state.species,
+          )
+          // Cyanobacteria children inherit the parent's locked axis
+          if (b.initialAngle != null) {
+            child.angle = b.angle
+            child.initialAngle = b.initialAngle
+          }
+          child.plasmid = childPlasmid
+          child.properties = childProps
           child.behavior = { ...b.behavior }
-          child.radius = sp.baseSize * child.properties.size
+          child.radius = childRadius
           child.energy = 30
           child.splitPhase = 1
           newBacteria.push(child)
@@ -345,7 +357,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               idB: child.id,
               endA: parentEnd,
               endB: childEnd,
-              restLength: 2, // small gap between touching ends
+              restLength: bondGap,
             })
           }
 
