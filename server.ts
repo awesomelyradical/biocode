@@ -61,6 +61,7 @@ function createRoomState(): GameState {
   return {
     bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
     nutrients: [],
+    antibiotics: [],
     species,
     camera: { x: 0, y: 0, zoom: 1 },
     selectedId: null,
@@ -74,6 +75,7 @@ function createRoomState(): GameState {
       unlocked: new Set<string>(),
       equipped: { colors: null, patterns: null, backgrounds: null, music: null, tools: null },
     },
+    nutrientProfile: 'standard',
   }
 }
 
@@ -82,6 +84,7 @@ function extractSharedState(state: GameState): SharedGameState {
   return {
     bacteria: state.bacteria,
     nutrients: state.nutrients,
+    antibiotics: state.antibiotics,
     tick: state.tick,
     worldWidth: state.worldWidth,
     worldHeight: state.worldHeight,

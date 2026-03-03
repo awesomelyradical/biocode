@@ -20,7 +20,7 @@
  */
 
 import type { GameState, GameAction, BacteriaState, TraitKey, BehaviorKey, Nutrient, StoreCategory } from './types'
-import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS, STORE_ITEMS } from './data'
+import { species, createBacteria, spawnInitialPopulation, createDefaultBehavior, plasmidToProperties, TRAIT_KEYS, BASE_TRAIT_POINTS, WORLD_WIDTH, WORLD_HEIGHT, WORLD_RADIUS, STORE_ITEMS, NUTRIENT_PROFILES } from './data'
 
 let nutrientId = 0
 
@@ -216,7 +216,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         // Size pressure: larger bacteria have much lower reproduction thresholds
         const sizeMultiplier = b.properties.size
         const sizePressure = sizeMultiplier > 1.2 ? Math.max(0.1, 1 - (sizeMultiplier - 1.2) * 0.6) : 1
-        const reproThreshold = sp.baseReproductionRate * b.properties.reproductionRate * (1 + lfMod * 0.5) * sizePressure
+        const reproThreshold = sp.baseReproductionRate * b.properties.reproductionRate * (1 + lfMod * 0.5) * sizePressure * (b.antibioticBoost ? 0.5 : 1)
         // Must be large enough that halving still leaves >= 0.5 base size
         const canSplit = b.properties.size >= 1.0
         if (canSplit && newEnergy > reproThreshold && state.bacteria.length + newBacteria.length < 200) {
@@ -292,6 +292,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           angle: Math.atan2(nvy, nvx),
           flagellaPhase: b.flagellaPhase + 0.15,
           splitPhase: b.splitPhase ? Math.max(0, b.splitPhase - 0.06) : undefined,
+          antibioticBoost: b.antibioticBoost ? b.antibioticBoost - 1 : undefined,
         }
       })
 
@@ -387,8 +388,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Spawn nutrients from dead bacteria — bigger ones release more
       const newNutrients: Nutrient[] = []
+      const alreadySpawnedNutrients = new Set<string>()
       for (const b of updated) {
         if (toRemove.has(b.id)) {
+          alreadySpawnedNutrients.add(b.id)
           const sp = species.find(s => s.id === b.speciesId)!
           const sizeBonus = b.radius / sp.baseSize // >1 for bigger-than-base bacteria
           const deathEnergy = Math.max(10, (b.energy + 20) * sizeBonus)
@@ -396,8 +399,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
 
-      // Ambient nutrient spawning (~1 particle every 3 ticks on average)
-      if (Math.random() < 0.3) {
+      // Ambient nutrient spawning — rate from profile
+      const profile = NUTRIENT_PROFILES.find(p => p.id === state.nutrientProfile) ?? NUTRIENT_PROFILES[0]
+      if (Math.random() < profile.nutrientRate) {
         const angle = Math.random() * Math.PI * 2
         const dist = Math.sqrt(Math.random()) * (state.worldRadius - 50)
         const ncx = state.worldRadius
@@ -413,6 +417,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           color: 'oklch(0.78 0.12 145)', // neutral green
           age: 0,
           maxAge: 600 + Math.floor(Math.random() * 400), // 20–33 seconds
+        })
+      }
+
+      // Ambient antibiotic spawning — rate from profile
+      const newAntibiotics: Nutrient[] = []
+      if (Math.random() < profile.antibioticRate) {
+        const angle = Math.random() * Math.PI * 2
+        const dist = Math.sqrt(Math.random()) * (state.worldRadius - 50)
+        const ncx = state.worldRadius
+        const ncy = state.worldRadius
+        newAntibiotics.push({
+          id: `a${nutrientId++}`,
+          x: ncx + Math.cos(angle) * dist,
+          y: ncy + Math.sin(angle) * dist,
+          vx: (Math.random() - 0.5) * 0.2,
+          vy: (Math.random() - 0.5) * 0.2,
+          energy: 0, // not used for energy
+          radius: 3 + Math.random() * 1.5,
+          color: 'oklch(0.65 0.25 25)', // red/toxic
+          age: 0,
+          maxAge: 800 + Math.floor(Math.random() * 400),
         })
       }
 
@@ -463,13 +488,77 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...newNutrients,
       ]
 
+      // Update existing antibiotics (drift, aging) and let bacteria absorb them
+      const absorbedAntibiotics = new Set<string>()
+      const existingAntibiotics = state.antibiotics.map(ab => {
+        if (ab.age >= ab.maxAge) {
+          absorbedAntibiotics.add(ab.id)
+          return ab
+        }
+        for (const b of alive) {
+          if (toRemove.has(b.id)) continue
+          const dx = b.x - ab.x
+          const dy = b.y - ab.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < b.radius + ab.radius + 2) {
+            absorbedAntibiotics.add(ab.id)
+            // Shrink the bacterium
+            const sp = species.find(s => s.id === b.speciesId)!
+            const shrink = b.plasmid.traits.size * 0.3
+            const newSizeTrait = Math.max(BASE_TRAIT_POINTS * 0.3, b.plasmid.traits.size - shrink)
+            const actualShrink = b.plasmid.traits.size - newSizeTrait
+            b.plasmid = {
+              capacity: b.plasmid.capacity - actualShrink,
+              traits: { ...b.plasmid.traits, size: newSizeTrait },
+            }
+            b.properties = plasmidToProperties(b.plasmid, sp.color)
+            b.radius = sp.baseSize * b.properties.size
+            b.energy = Math.max(0, b.energy - 20)
+            // 70% chance of death
+            if (Math.random() < 0.7) {
+              toRemove.add(b.id)
+            } else {
+              // Survivor gets a reproduction boost (150 ticks ≈ 5 seconds)
+              b.antibioticBoost = 150
+            }
+            return ab
+          }
+        }
+        return {
+          ...ab,
+          x: ab.x + ab.vx + (Math.random() - 0.5) * 0.2,
+          y: ab.y + ab.vy + (Math.random() - 0.5) * 0.2,
+          vx: ab.vx * 0.99,
+          vy: ab.vy * 0.99,
+          age: ab.age + 1,
+        }
+      })
+
+      // Re-filter alive after antibiotic deaths
+      const finalAlive = alive.filter(b => !toRemove.has(b.id))
+      // Spawn nutrients from antibiotic deaths (skip bacteria already handled above)
+      for (const b of alive) {
+        if (toRemove.has(b.id) && !alreadySpawnedNutrients.has(b.id)) {
+          const sp = species.find(s => s.id === b.speciesId)!
+          const sizeBonus = b.radius / sp.baseSize
+          const deathEnergy = Math.max(5, (b.energy + 10) * sizeBonus)
+          newNutrients.push(...spawnNutrients(b.x, b.y, deathEnergy, sp.color, sizeBonus))
+        }
+      }
+
+      const liveAntibiotics = [
+        ...existingAntibiotics.filter(ab => !absorbedAntibiotics.has(ab.id)),
+        ...newAntibiotics,
+      ]
+
       // Biomass accrual — earn based on living population
-      const biomassGain = alive.length * 0.02
+      const biomassGain = finalAlive.length * 0.02
 
       return {
         ...state,
-        bacteria: [...alive, ...newBacteria],
+        bacteria: [...finalAlive, ...newBacteria],
         nutrients: liveNutrients,
+        antibiotics: liveAntibiotics,
         tick: state.tick + 1,
         biomass: state.biomass + biomassGain,
         selectedId: toRemove.has(state.selectedId ?? '') ? null : state.selectedId,
@@ -614,10 +703,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
         nutrients: [],
+        antibiotics: [],
         selectedId: null,
         tick: 0,
         camera: { x: WORLD_RADIUS, y: WORLD_RADIUS, zoom: 0.4 },
         paused: false,
+        nutrientProfile: state.nutrientProfile,
       }
     }
 
@@ -683,6 +774,38 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         biomass: state.biomass - dropCost,
       }
     }
+
+    case 'DROP_ANTIBIOTICS': {
+      if (state.store.equipped.tools !== 'tool-antibiotic-dropper') return state
+      const dropCost = 5
+      if (state.biomass < dropCost) return state
+      const dropCount = 3 + Math.floor(Math.random() * 3)
+      const dropAntibiotics: Nutrient[] = []
+      for (let i = 0; i < dropCount; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const spread = Math.random() * 15
+        dropAntibiotics.push({
+          id: `a${nutrientId++}`,
+          x: action.x + Math.cos(angle) * spread,
+          y: action.y + Math.sin(angle) * spread,
+          vx: Math.cos(angle) * 0.15,
+          vy: Math.sin(angle) * 0.15,
+          energy: 0,
+          radius: 3 + Math.random() * 1.5,
+          color: 'oklch(0.65 0.25 25)',
+          age: 0,
+          maxAge: 800 + Math.floor(Math.random() * 400),
+        })
+      }
+      return {
+        ...state,
+        antibiotics: [...state.antibiotics, ...dropAntibiotics],
+        biomass: state.biomass - dropCost,
+      }
+    }
+
+    case 'SET_NUTRIENT_PROFILE':
+      return { ...state, nutrientProfile: action.profile }
 
     default:
       return state

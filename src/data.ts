@@ -256,6 +256,16 @@ export const STORE_ITEMS: StoreItem[] = [
 
   // Tools
   { id: 'tool-nutrient-dropper', category: 'tools', name: 'Nutrient Dropper', description: 'Click to place nutrient clusters (3 biomass each)', cost: 75, icon: '💧' },
+  { id: 'tool-antibiotic-dropper', category: 'tools', name: 'Antibiotic Dropper', description: 'Click to place antibiotic clusters (5 biomass each)', cost: 120, icon: '☠️' },
   { id: 'music-synth-wave',   category: 'music', name: 'Synth Wave',        description: 'Retro synthwave ambience',      cost: 100, icon: '🎹' },
   { id: 'music-nature',       category: 'music', name: 'Nature',            description: 'Rain and wind sounds',          cost: 80,  icon: '🌧️' },
+]
+
+import type { NutrientProfile } from './types'
+
+export const NUTRIENT_PROFILES: NutrientProfile[] = [
+  { id: 'standard',                   label: 'Standard',                  nutrientRate: 0.3,  antibioticRate: 0 },
+  { id: 'high-nutrient',              label: 'High Nutrient',             nutrientRate: 0.6,  antibioticRate: 0 },
+  { id: 'standard-antibiotic',        label: 'Standard + Antibiotic',     nutrientRate: 0.3,  antibioticRate: 0.1 },
+  { id: 'high-nutrient-antibiotic',   label: 'High Nutrient + Antibiotic', nutrientRate: 0.6, antibioticRate: 0.1 },
 ]

@@ -11,8 +11,8 @@
  *   multiplayer info (room code + copy-invite, player count, leave)
  */
 
-import type { GameState, GameAction } from '../types'
-import { species } from '../data'
+import type { GameState, GameAction, NutrientProfileId } from '../types'
+import { species, NUTRIENT_PROFILES } from '../data'
 
 interface HUDProps {
   state: GameState
@@ -134,6 +134,15 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
               <span className="text-sm">🧫</span>
               <span className="text-xs font-bold text-primary font-mono">{Math.floor(state.biomass)}</span>
             </div>
+            <select
+              value={state.nutrientProfile}
+              onChange={e => dispatch({ type: 'SET_NUTRIENT_PROFILE', profile: e.target.value as NutrientProfileId })}
+              className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-2 py-1.5 text-xs text-primary cursor-pointer outline-none hover:bg-primary/10 transition-colors"
+            >
+              {NUTRIENT_PROFILES.map(p => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
             <button
               onClick={onOpenStore}
               className="bg-card/70 backdrop-blur-md border border-primary/20 rounded-lg px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors cursor-pointer flex items-center gap-1.5"

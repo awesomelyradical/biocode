@@ -83,6 +83,7 @@ export interface BacteriaState {
   membraneColor?: string  // custom membrane color from store
   movementPattern?: string // store pattern id (e.g. 'pattern-spiral')
   splitPhase?: number      // 1 = just split, decays to 0 (animation)
+  antibioticBoost?: number // ticks remaining of reproduction boost from surviving antibiotic
 }
 
 /** Viewport camera (world-space center + zoom level). */
@@ -153,11 +154,24 @@ export type GameAction =
   | { type: 'EQUIP_ITEM'; itemId: string; category: StoreCategory }
   | { type: 'UNEQUIP_ITEM'; category: StoreCategory }
   | { type: 'DROP_NUTRIENTS'; x: number; y: number }
+  | { type: 'DROP_ANTIBIOTICS'; x: number; y: number }
+  | { type: 'SET_NUTRIENT_PROFILE'; profile: NutrientProfileId }
+
+/** Nutrient environment profile controlling ambient spawn rates. */
+export type NutrientProfileId = 'standard' | 'high-nutrient' | 'standard-antibiotic' | 'high-nutrient-antibiotic'
+
+export interface NutrientProfile {
+  id: NutrientProfileId
+  label: string
+  nutrientRate: number     // chance per tick to spawn a nutrient (0–1)
+  antibioticRate: number   // chance per tick to spawn an antibiotic (0–1)
+}
 
 /** The complete, serialisable game state passed through the reducer. */
 export interface GameState {
   bacteria: BacteriaState[]
   nutrients: Nutrient[]
+  antibiotics: Nutrient[]
   species: Species[]
   camera: CameraState
   selectedId: string | null
@@ -168,4 +182,5 @@ export interface GameState {
   paused: boolean
   biomass: number
   store: StoreState
+  nutrientProfile: NutrientProfileId
 }

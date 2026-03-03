@@ -55,6 +55,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
       return {
         bacteria: [],
         nutrients: [],
+        antibiotics: [],
         species,
         camera,
         selectedId,
@@ -68,11 +69,13 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
           unlocked: new Set<string>(['bg-dark-void']),
           equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
         },
+        nutrientProfile: 'standard' as const,
       }
     }
     return {
       bacteria: mp.sharedState.bacteria,
       nutrients: mp.sharedState.nutrients,
+      antibiotics: mp.sharedState.antibiotics ?? [],
       species: mp.sharedState.species,
       camera,
       selectedId,
@@ -86,6 +89,7 @@ export function MultiplayerGame({ roomCode: initialRoomCode, onDisconnect }: Mul
         unlocked: new Set<string>(['bg-dark-void']),
         equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
       },
+      nutrientProfile: 'standard' as const,
     }
   }, [mp.sharedState, camera, selectedId])
 

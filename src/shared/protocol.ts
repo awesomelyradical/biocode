@@ -19,6 +19,7 @@ import type { BacteriaState, Nutrient, Species, TraitKey, BehaviorKey } from '..
 export interface SharedGameState {
   bacteria: BacteriaState[]
   nutrients: Nutrient[]
+  antibiotics: Nutrient[]
   tick: number
   worldWidth: number
   worldHeight: number

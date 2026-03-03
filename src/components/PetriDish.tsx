@@ -350,7 +350,7 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
     resize()
 
     const render = () => {
-      const { camera, bacteria, nutrients, selectedId, worldRadius } = state
+      const { camera, bacteria, nutrients, antibiotics, selectedId, worldRadius } = state
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -416,6 +416,49 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
         ctx.fillStyle = '#ffffff'
         ctx.globalAlpha = alpha * 0.6
         ctx.fill()
+
+        ctx.restore()
+      }
+
+      // Draw antibiotic particles
+      for (const ab of antibiotics) {
+        const fade = 1 - ab.age / ab.maxAge
+        const alpha = Math.min(1, fade * 1.5)
+        ctx.save()
+
+        // Pulsing danger glow
+        const pulse = 0.8 + Math.sin(ab.age * 0.15) * 0.2
+        ctx.beginPath()
+        ctx.arc(ab.x, ab.y, ab.radius * 3 * pulse, 0, Math.PI * 2)
+        ctx.fillStyle = 'oklch(0.55 0.30 25)' // deep red glow
+        ctx.globalAlpha = alpha * 0.12
+        ctx.fill()
+
+        // Core — angular / crystalline look (hexagon)
+        ctx.beginPath()
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI / 3) * i - Math.PI / 2
+          const px = ab.x + Math.cos(a) * ab.radius
+          const py = ab.y + Math.sin(a) * ab.radius
+          if (i === 0) ctx.moveTo(px, py)
+          else ctx.lineTo(px, py)
+        }
+        ctx.closePath()
+        ctx.fillStyle = ab.color
+        ctx.globalAlpha = alpha * 0.9
+        ctx.fill()
+
+        // Inner cross mark
+        ctx.strokeStyle = 'oklch(0.90 0.05 25)'
+        ctx.lineWidth = 1
+        ctx.globalAlpha = alpha * 0.5
+        const cr = ab.radius * 0.4
+        ctx.beginPath()
+        ctx.moveTo(ab.x - cr, ab.y - cr)
+        ctx.lineTo(ab.x + cr, ab.y + cr)
+        ctx.moveTo(ab.x + cr, ab.y - cr)
+        ctx.lineTo(ab.x - cr, ab.y + cr)
+        ctx.stroke()
 
         ctx.restore()
       }
@@ -615,6 +658,11 @@ export function PetriDish({ state, dispatch, mouseWorldRef, remoteCursors }: Pet
     // If nutrient dropper is equipped, place nutrients instead of deselecting
     if (state.store.equipped.tools === 'tool-nutrient-dropper') {
       dispatch({ type: 'DROP_NUTRIENTS', x: world.x, y: world.y })
+      return
+    }
+    // If antibiotic dropper is equipped, place antibiotics
+    if (state.store.equipped.tools === 'tool-antibiotic-dropper') {
+      dispatch({ type: 'DROP_ANTIBIOTICS', x: world.x, y: world.y })
       return
     }
     // Click on empty space deselects

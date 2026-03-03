@@ -33,6 +33,7 @@ type AppScreen = 'splash' | 'singleplayer' | 'mp-lobby' | 'mp-game'
 const initialState: GameState = {
   bacteria: spawnInitialPopulation(WORLD_RADIUS, 25),
   nutrients: [],
+  antibiotics: [],
   species,
   camera: { x: WORLD_RADIUS, y: WORLD_RADIUS, zoom: 0.4 },
   selectedId: null,
@@ -46,6 +47,7 @@ const initialState: GameState = {
     unlocked: new Set(['bg-dark-void']),
     equipped: { colors: null, patterns: null, backgrounds: 'bg-dark-void', music: null, tools: null },
   },
+  nutrientProfile: 'standard',
 }
 
 function SplashScreen({ onPlay, onMultiplayer }: { onPlay: () => void; onMultiplayer: () => void }) {
