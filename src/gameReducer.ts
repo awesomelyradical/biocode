@@ -79,6 +79,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const bacteriaGridPrev = new SpatialGrid<BacteriaState>(GRID_CELL_SIZE, WORLD_GRID_SIZE)
       for (const b of state.bacteria) bacteriaGridPrev.insert(b.x, b.y, b)
 
+      // Pre-compute mature cyanobacteria from previous frame's bonds (for nutrient attraction skip)
+      const prevBondCount = new Map<string, number>()
+      for (const bond of state.bonds) {
+        prevBondCount.set(bond.idA, (prevBondCount.get(bond.idA) ?? 0) + 1)
+        prevBondCount.set(bond.idB, (prevBondCount.get(bond.idB) ?? 0) + 1)
+      }
+      const prevMatureCyano = new Set<string>()
+      for (const b of state.bacteria) {
+        if (b.speciesId === 'cyanobacteria' && (prevBondCount.get(b.id) ?? 0) >= 2) {
+          prevMatureCyano.add(b.id)
+        }
+      }
+
       const updated = state.bacteria.map(b => {
         const sp = species.find(s => s.id === b.speciesId)!
         const effectiveSpeed = sp.baseSpeed * b.properties.speed
@@ -136,6 +149,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         }
 
         // ── Nutrient attraction (spatial grid query) ──
+        // Mature cyanobacteria (interior cells with 2+ bonds) don't seek nutrients
+        if (!prevMatureCyano.has(b.id)) {
         const nearbyNutrients = nutrientGrid.query(b.x, b.y, effectiveSense)
         for (let ni = 0; ni < nearbyNutrients.length; ni++) {
           const n = nearbyNutrients[ni]!
@@ -147,6 +162,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           const strength = 0.05 * effectiveSpeed * (1 - ndist / effectiveSense)
           nvx += (ndx / ndist) * strength
           nvy += (ndy / ndist) * strength
+        }
         }
 
         // ── Species affinity forces (spatial grid query on previous frame) ──
@@ -410,10 +426,33 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (!brokenBonds.has(bi)) survivingBonds.push(state.bonds[bi]!)
       }
 
+      // Count bonds per cell — cyanobacteria with 2+ bonds are "mature" (interior cells)
+      const bondCount = new Map<string, number>()
+      for (const bond of survivingBonds) {
+        bondCount.set(bond.idA, (bondCount.get(bond.idA) ?? 0) + 1)
+        bondCount.set(bond.idB, (bondCount.get(bond.idB) ?? 0) + 1)
+      }
+      // Also count new bonds from this tick's divisions
+      for (const bond of newBonds) {
+        bondCount.set(bond.idA, (bondCount.get(bond.idA) ?? 0) + 1)
+        bondCount.set(bond.idB, (bondCount.get(bond.idB) ?? 0) + 1)
+      }
+      const matureCyano = new Set<string>()
+      for (const [id, count] of bondCount) {
+        if (count >= 2) {
+          const b = byId.get(id)
+          if (b && b.speciesId === 'cyanobacteria') matureCyano.add(id)
+        }
+      }
+
       // Cyanobacteria photosynthesis — occasionally emit a nutrient nearby
+      // Mature cyanobacteria (2+ bonds) emit more frequently since they don't consume
       const photoNutrients: Nutrient[] = []
       for (const b of updated) {
-        if (b.speciesId === 'cyanobacteria' && !toRemove.has(b.id) && Math.random() < 0.03) {
+        if (b.speciesId !== 'cyanobacteria' || toRemove.has(b.id)) continue
+        const isMature = matureCyano.has(b.id)
+        const emitChance = isMature ? 0.06 : 0.03
+        if (Math.random() < emitChance) {
           const angle = Math.random() * Math.PI * 2
           photoNutrients.push({
             id: `n${nutrientId++}`,
@@ -604,6 +643,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         aliveGrid.query(n.x, n.y, GRID_CELL_SIZE, absorptionBuf)
         for (let bi = 0; bi < absorptionBuf.length; bi++) {
           const b = absorptionBuf[bi]!
+          // Mature cyanobacteria (2+ bonds) don't absorb nutrients
+          if (matureCyano.has(b.id)) continue
           const dx = b.x - n.x
           const dy = b.y - n.y
           const dist2 = dx * dx + dy * dy
