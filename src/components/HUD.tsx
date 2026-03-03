@@ -44,7 +44,7 @@ export function HUD({ state, dispatch, onOpenStore, multiplayerInfo }: HUDProps)
           <div className="flex items-center gap-3 mb-1">
             <span className="text-xs font-semibold text-primary">Population ({state.bacteria.length})</span>
             <div className="flex items-center gap-1 bg-primary/10 rounded-full px-2 py-0.5">
-              <span className="text-[10px]">🧫</span>
+              <span className="text-[10px]">�</span>
               <span className="text-[11px] font-bold text-primary font-mono">{Math.floor(state.biomass)}</span>
             </div>
           </div>
