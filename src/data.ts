@@ -187,6 +187,16 @@ export function createBacteria(
   const speed = sp.baseSpeed * (0.8 + Math.random() * 0.4)
 
   const plasmid = createPlasmid()
+  // Cyanobacteria start with 0.1× speed — redistribute freed points to other traits
+  if (speciesId === 'cyanobacteria') {
+    const speedPoints = plasmid.traits.speed
+    const newSpeed = BASE_TRAIT_POINTS * 0.1 // 1 point
+    const freed = speedPoints - newSpeed
+    plasmid.traits.speed = newSpeed
+    const otherKeys = TRAIT_KEYS.filter(k => k !== 'speed')
+    const perOther = freed / otherKeys.length
+    for (const k of otherKeys) plasmid.traits[k] += perOther
+  }
   const properties = plasmidToProperties(plasmid, sp.color)
 
   return {
