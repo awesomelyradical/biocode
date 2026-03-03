@@ -30,7 +30,7 @@ const WORLD_GRID_SIZE = WORLD_RADIUS * 2
 const BOND_STIFFNESS = 0.15    // spring constant k
 const BOND_DAMPING = 0.3       // velocity damping along bond axis
 const BOND_BREAK_STRETCH = 3.0 // break when stretched to 3× rest length
-const MAX_ABSORB_PER_TICK = 8  // max energy a cell can absorb per tick
+const MAX_ABSORB_PER_TICK = 4  // max energy a cell can absorb per tick
 
 let nutrientId = 0
 
@@ -524,8 +524,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             y: b.y + Math.sin(angle) * (b.radius + 3),
             vx: Math.cos(angle) * 0.05,
             vy: Math.sin(angle) * 0.05,
-            energy: 3 + Math.random() * 3,
-            radius: 2 + Math.random(),
+            energy: 1 + Math.random(),
+            radius: 1.5 + Math.random() * 0.5,
             color: 'oklch(0.78 0.14 170)', // cyan-green tint
             age: 0,
             maxAge: 400 + Math.floor(Math.random() * 200),
